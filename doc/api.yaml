@@ -1,0 +1,819 @@
+openapi: 3.0.3
+info:
+  title: HEI Academic Records API
+  version: 1.0.0
+  description: >
+    API for managing HEI students, courses, teacher assignments, historized grades,
+    group mobility across EL/TN tracks, and graduate lists over a 3-year LMD cycle.
+    Roles: STUDENT, TEACHER, ADMIN.
+  contact:
+    name: School HEI team
+
+servers:
+  - url: https://dbywmjljejokinn4nvrs4t6wtm0vsgtb.lambda-url.eu-west-3.on.aws
+    description: Preprod
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Health
+    description: Service status
+  - name: Auth
+    description: Registration and authentication
+  - name: Promotions
+    description: Yearly student cohorts
+  - name: Courses
+    description: Course catalog (UE)
+  - name: Groups
+    description: Student groups (K1-K4, EL/TN/COMMUN tracks)
+  - name: Course Assignments
+    description: Teacher-course-group-year assignments
+  - name: Group Memberships
+    description: Historized student-to-group mobility
+  - name: Exams
+    description: Exams belonging to a course assignment
+  - name: Grades
+    description: Historized student grades
+  - name: Transcripts
+    description: Per-year and PDF transcripts
+  - name: Graduates
+    description: Ranked graduate lists per promotion/track
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    idPathParam:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    academicYearQueryParam:
+      name: academicYear
+      in: query
+      required: true
+      schema: { type: integer, example: 2026 }
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: Authenticated but not allowed to perform this action
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        code: { type: string, example: "VALIDATION_ERROR" }
+        message: { type: string, example: "coefficient must be between 0 and 1" }
+        timestamp: { type: string, format: date-time }
+
+    RegisterRequest:
+      type: object
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        birthdate: { type: string, format: date }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        phone: { type: string }
+        promotionId: { type: string, format: uuid }
+      required: [firstName, lastName, email, password, promotionId]
+    LoginRequest:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+      required: [email, password]
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string }
+    MeResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [STUDENT, TEACHER, ADMIN] }
+        std: { type: string, nullable: true, description: "Present only for STUDENT" }
+
+    # ---------- Coéquipier ----------
+    PromotionRequest:
+      type: object
+      properties:
+        year: { type: integer, example: 2024 }
+      required: [year]
+    PromotionResponse:
+      allOf:
+        - $ref: '#/components/schemas/PromotionRequest'
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+
+    CourseRequest:
+      type: object
+      properties:
+        ref: { type: string, example: "PROG4" }
+        title: { type: string, example: "Qualité et sûreté des applications" }
+        credits: { type: integer, minimum: 1 }
+      required: [ref, title, credits]
+    CourseResponse:
+      allOf:
+        - $ref: '#/components/schemas/CourseRequest'
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+
+    GroupRequest:
+      type: object
+      properties:
+        ref: { type: string, example: "K1" }
+        track: { type: string, enum: [EL, TN, COMMUN] }
+      required: [ref, track]
+    GroupResponse:
+      allOf:
+        - $ref: '#/components/schemas/GroupRequest'
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+
+    CourseAssignmentRequest:
+      type: object
+      properties:
+        courseId: { type: string, format: uuid }
+        teacherId: { type: string, format: uuid }
+        groupId: { type: string, format: uuid }
+        academicYear: { type: integer }
+      required: [courseId, teacherId, groupId, academicYear]
+    CourseAssignmentResponse:
+      allOf:
+        - $ref: '#/components/schemas/CourseAssignmentRequest'
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+
+    GraduateResponse:
+      type: object
+      properties:
+        rank: { type: integer }
+        std: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        generalAverage: { type: number, format: double }
+        track: { type: string, enum: [EL, TN] }
+
+    # ---------- Moi ----------
+    GroupMembershipRequest:
+      type: object
+      properties:
+        studentId: { type: string, format: uuid }
+        groupId: { type: string, format: uuid }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date, nullable: true }
+      required: [studentId, groupId, startDate]
+    GroupMembershipResponse:
+      allOf:
+        - $ref: '#/components/schemas/GroupMembershipRequest'
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+
+    ExamRequest:
+      type: object
+      properties:
+        assignmentId: { type: string, format: uuid }
+        dateExam: { type: string, format: date-time }
+        coefficient: { type: number, format: double, minimum: 0, maximum: 1 }
+      required: [assignmentId, dateExam, coefficient]
+    ExamResponse:
+      allOf:
+        - $ref: '#/components/schemas/ExamRequest'
+        - type: object
+          properties:
+            id: { type: string, format: uuid }
+
+    GradeRequest:
+      type: object
+      properties:
+        studentId: { type: string, format: uuid }
+        examId: { type: string, format: uuid }
+        value: { type: number, format: double, minimum: 0, maximum: 20 }
+        reason:
+          type: string
+          description: Required when amending an existing current grade
+      required: [studentId, examId, value]
+    GradeResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        examId: { type: string, format: uuid }
+        value: { type: number, format: double }
+        gradedAt: { type: string, format: date-time }
+        reason: { type: string, nullable: true }
+        previousGradeId: { type: string, format: uuid, nullable: true }
+        current: { type: boolean }
+
+    TranscriptCourseLine:
+      type: object
+      properties:
+        courseRef: { type: string }
+        courseTitle: { type: string }
+        average: { type: number, format: double, nullable: true }
+        credits: { type: integer }
+        complete: { type: boolean }
+    TranscriptResponse:
+      type: object
+      properties:
+        studentId: { type: string, format: uuid }
+        std: { type: string }
+        academicYear: { type: integer }
+        courses: { type: array, items: { $ref: '#/components/schemas/TranscriptCourseLine' } }
+        generalAverage: { type: number, format: double, nullable: true }
+        totalCredits: { type: integer }
+        complete: { type: boolean, description: "false if provisional (at least one course incomplete)" }
+
+paths:
+  /ping:
+    get:
+      tags: [Health]
+      operationId: ping
+      summary: Health check
+      security: []
+      responses:
+        '200': { description: pong }
+
+  /register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Register a new student account (STD auto-generated)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201': { description: Student created }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: Authenticate and receive a JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentUser
+      summary: Get the currently authenticated user's profile
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ==================== Promotions — coéquipier ====================
+  /promotions:
+    get:
+      tags: [Promotions]
+      operationId: listPromotions
+      summary: List all promotions
+      security: []
+      responses:
+        '200':
+          description: List of promotions
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/PromotionResponse' } }
+    post:
+      tags: [Promotions]
+      operationId: createPromotion
+      summary: Create a promotion (ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PromotionRequest' }
+      responses:
+        '201':
+          description: Promotion created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PromotionResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /promotions/{id}:
+    get:
+      tags: [Promotions]
+      operationId: getPromotion
+      summary: Get a promotion by id
+      security: []
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '200':
+          description: Promotion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PromotionResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Promotions]
+      operationId: updatePromotion
+      summary: Update a promotion (ADMIN only)
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PromotionRequest' }
+      responses:
+        '200':
+          description: Promotion updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PromotionResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Promotions]
+      operationId: deletePromotion
+      summary: Delete a promotion (ADMIN only, only if it has no students)
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Promotion still has students attached }
+
+  /promotions/{id}/graduates:
+    get:
+      tags: [Graduates]
+      operationId: listGraduates
+      summary: List graduates of a promotion, ranked by general average, split by track (ADMIN only)
+      parameters:
+        - { $ref: '#/components/parameters/idPathParam' }
+        - name: track
+          in: query
+          schema: { type: string, enum: [EL, TN] }
+      responses:
+        '200':
+          description: Ranked graduate list
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/GraduateResponse' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /promotions/{id}/graduates/export:
+    get:
+      tags: [Graduates]
+      operationId: exportGraduatesXlsx
+      summary: Download the graduate list as XLSX (generated, stored on S3, redirects to a signed URL). ADMIN only.
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '302': { description: Redirect to a signed S3 URL of the generated XLSX }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ==================== Courses — coéquipier ====================
+  /courses:
+    get:
+      tags: [Courses]
+      operationId: listCourses
+      summary: List all courses
+      security: []
+      responses:
+        '200':
+          description: List of courses
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/CourseResponse' } }
+    post:
+      tags: [Courses]
+      operationId: createCourse
+      summary: Create a course (ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CourseRequest' }
+      responses:
+        '201':
+          description: Course created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CourseResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /courses/{id}:
+    get:
+      tags: [Courses]
+      operationId: getCourse
+      summary: Get a course by id
+      security: []
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '200':
+          description: Course
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CourseResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Courses]
+      operationId: updateCourse
+      summary: Update a course (ADMIN only)
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CourseRequest' }
+      responses:
+        '200':
+          description: Course updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CourseResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Courses]
+      operationId: deleteCourse
+      summary: Delete a course (ADMIN only, only if it has no assignments)
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Course still has assignments attached }
+
+  # ==================== Groups — coéquipier ====================
+  /groups:
+    get:
+      tags: [Groups]
+      operationId: listGroups
+      summary: List all groups (ADMIN/TEACHER)
+      responses:
+        '200':
+          description: List of groups
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/GroupResponse' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Groups]
+      operationId: createGroup
+      summary: Create a group (ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GroupRequest' }
+      responses:
+        '201':
+          description: Group created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /groups/{id}:
+    get:
+      tags: [Groups]
+      operationId: getGroup
+      summary: Get a group by id (ADMIN/TEACHER)
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '200':
+          description: Group
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Groups]
+      operationId: updateGroup
+      summary: Update a group (ADMIN only)
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GroupRequest' }
+      responses:
+        '200':
+          description: Group updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Groups]
+      operationId: deleteGroup
+      summary: Delete a group (ADMIN only, only if it has no memberships/assignments)
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Group still referenced by memberships or assignments }
+
+  # ==================== Course Assignments — coéquipier ====================
+  /course-assignments:
+    get:
+      tags: [Course Assignments]
+      operationId: listCourseAssignments
+      summary: List course assignments (ADMIN sees all, TEACHER sees own only)
+      parameters:
+        - name: academicYear
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: List of assignments
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/CourseAssignmentResponse' } }
+    post:
+      tags: [Course Assignments]
+      operationId: createCourseAssignment
+      summary: Assign a teacher to a course for a group/year (ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CourseAssignmentRequest' }
+      responses:
+        '201':
+          description: Assignment created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CourseAssignmentResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /course-assignments/{id}:
+    get:
+      tags: [Course Assignments]
+      operationId: getCourseAssignment
+      summary: Get an assignment by id (ADMIN, or the assigned TEACHER)
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '200':
+          description: Assignment
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CourseAssignmentResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Course Assignments]
+      operationId: deleteCourseAssignment
+      summary: Remove an assignment (ADMIN only, only if it has no exams)
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Assignment still has exams attached }
+
+  # ==================== Group Memberships — moi ====================
+  /group-memberships:
+    get:
+      tags: [Group Memberships]
+      operationId: listGroupMemberships
+      summary: List a student's group history (ADMIN, or the STUDENT for themself)
+      parameters:
+        - name: studentId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Membership history, ordered by startDate
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/GroupMembershipResponse' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Group Memberships]
+      operationId: createGroupMembership
+      summary: Move a student to a group, historizing the previous membership (ADMIN only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GroupMembershipRequest' }
+      responses:
+        '201':
+          description: Membership created (previous one auto-closed)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupMembershipResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /group-memberships/{id}:
+    get:
+      tags: [Group Memberships]
+      operationId: getGroupMembership
+      summary: Get a membership record by id
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '200':
+          description: Membership
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupMembershipResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ==================== Exams — moi ====================
+  /exams:
+    get:
+      tags: [Exams]
+      operationId: listExams
+      summary: List exams for a course assignment
+      parameters:
+        - name: assignmentId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: List of exams
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/ExamResponse' } }
+    post:
+      tags: [Exams]
+      operationId: createExam
+      summary: Create an exam for a course assignment (TEACHER of that assignment, or ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ExamRequest' }
+      responses:
+        '201':
+          description: Exam created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '400': { description: Sum of coefficients for this assignment would exceed 1 }
+
+  /exams/{id}:
+    get:
+      tags: [Exams]
+      operationId: getExam
+      summary: Get an exam by id
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '200':
+          description: Exam
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ExamResponse' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Exams]
+      operationId: deleteExam
+      summary: Delete an exam (TEACHER of that assignment or ADMIN, only if it has no grades)
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Exam already has grades recorded }
+
+  # ==================== Grades — moi ====================
+  /grades:
+    get:
+      tags: [Grades]
+      operationId: listGrades
+      summary: List current grades (ADMIN, TEACHER of the course, or STUDENT for themself)
+      parameters:
+        - name: studentId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: examId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: List of current grades
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/GradeResponse' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Grades]
+      operationId: recordGrade
+      summary: Record or amend a grade; amending requires a reason and creates a new historized row
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GradeRequest' }
+      responses:
+        '201':
+          description: Grade recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GradeResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '400': { description: Reason missing while a current grade already exists for this student/exam }
+
+  /grades/{id}:
+    get:
+      tags: [Grades]
+      operationId: getGrade
+      summary: Get a specific grade record (including past, non-current ones)
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '200':
+          description: Grade
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GradeResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /grades/{id}/history:
+    get:
+      tags: [Grades]
+      operationId: getGradeHistory
+      summary: Get the full amendment chain for a grade (oldest to newest, with reasons)
+      parameters: [{ $ref: '#/components/parameters/idPathParam' }]
+      responses:
+        '200':
+          description: Chronological chain of grade amendments
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/GradeResponse' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ==================== Transcripts — moi ====================
+  /students/{id}/transcript:
+    get:
+      tags: [Transcripts]
+      operationId: getTranscript
+      summary: Get a student's transcript for a given academic year (marked provisional if incomplete)
+      parameters:
+        - { $ref: '#/components/parameters/idPathParam' }
+        - { $ref: '#/components/parameters/academicYearQueryParam' }
+      responses:
+        '200':
+          description: Transcript
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TranscriptResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /students/{id}/transcript/pdf:
+    post:
+      tags: [Transcripts]
+      operationId: sendTranscriptPdf
+      summary: Generate the transcript as PDF, upload to S3, and email it asynchronously
+      parameters:
+        - { $ref: '#/components/parameters/idPathParam' }
+        - { $ref: '#/components/parameters/academicYearQueryParam' }
+      responses:
+        '202': { description: Accepted — the PDF will be generated and emailed asynchronously }
+        '403': { $ref: '#/components/responses/Forbidden' }
