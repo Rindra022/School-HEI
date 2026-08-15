@@ -1,4 +1,3 @@
-// repository/StudentCounterRepository.java
 package mg.school.hei.repository;
 
 import lombok.RequiredArgsConstructor;
