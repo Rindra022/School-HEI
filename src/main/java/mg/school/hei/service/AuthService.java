@@ -55,10 +55,8 @@ public class AuthService {
                 .build());
 
     int year = promotion.getYear();
-    studentCounterRepository.incrementCounter(year);
-    int count = studentCounterRepository.getCount(year);
+    int count = studentCounterRepository.incrementAndGet(year);
     String std = "STD" + String.format("%02d", year % 100) + String.format("%03d", count);
-
     studentRepository.save(
         JStudent.builder().id(user.getId()).std(std).promotion(promotion).build());
   }
