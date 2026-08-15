@@ -30,4 +30,10 @@ public class ExamController {
   public ExamResponse get(@PathVariable UUID id) {
     return examService.get(id);
   }
+
+  @DeleteMapping("/exams/{id}")
+  public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    examService.delete(id);
+    return ResponseEntity.noContent().build();
+  }
 }

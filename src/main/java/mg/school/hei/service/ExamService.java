@@ -11,6 +11,7 @@ import mg.school.hei.mapper.ExamMapper;
 import mg.school.hei.model.Exam;
 import mg.school.hei.repository.CourseAssignmentRepository;
 import mg.school.hei.repository.ExamRepository;
+import mg.school.hei.repository.GradeRepository;
 import mg.school.hei.repository.model.JCourseAssignment;
 import mg.school.hei.repository.model.JExam;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExamService {
   private final ExamRepository examRepository;
   private final CourseAssignmentRepository courseAssignmentRepository;
+  private final GradeRepository gradeRepository;
   private final ExamMapper examMapper;
 
   @Transactional
@@ -61,6 +63,20 @@ public class ExamService {
     JExam entity =
         examRepository.findById(id).orElseThrow(() -> new NoSuchElementException("Exam not found"));
     return toResponse(examMapper.toModel(entity));
+  }
+
+  @Transactional
+  public void delete(UUID id) {
+    if (!examRepository.existsById(id)) {
+      throw new NoSuchElementException("Exam not found");
+    }
+
+    boolean hasGrades = !gradeRepository.findByExamId(id).isEmpty();
+    if (hasGrades) {
+      throw new IllegalStateException("Exam already has grades recorded");
+    }
+
+    examRepository.deleteById(id);
   }
 
   private ExamResponse toResponse(Exam e) {
