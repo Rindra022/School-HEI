@@ -6,15 +6,15 @@ import mg.school.hei.security.exception.RestAuthenticationEntryPoint;
 import mg.school.hei.security.filter.BearerAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.password.Argon2PasswordEncoder;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.bind.annotation.RequestMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -39,8 +39,13 @@ public class SecurityConf {
             auth ->
                 auth.requestMatchers("/ping", "/register", "/login")
                     .permitAll()
-                    .requestMatchers(
-                        RequestMethod.GET, "/promotions", "/promotions/*", "/courses", "/courses/*")
+                    .requestMatchers(HttpMethod.GET, "/promotions")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/promotions/*")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/courses")
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/courses/*")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
