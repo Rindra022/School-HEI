@@ -2,9 +2,11 @@ package mg.school.hei.service;
 
 import java.time.Instant;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import mg.school.hei.endpoint.rest.controller.dto.AuthResponse;
 import mg.school.hei.endpoint.rest.controller.dto.LoginRequest;
+import mg.school.hei.endpoint.rest.controller.dto.MeResponse;
 import mg.school.hei.endpoint.rest.controller.dto.RegisterRequest;
 import mg.school.hei.model.UserRole;
 import mg.school.hei.repository.AppUserRepository;
@@ -72,5 +74,25 @@ public class AuthService {
     }
 
     return new AuthResponse(jwtService.generateToken(user.getId(), user.getRole()));
+  }
+
+  public MeResponse getCurrentUser(UUID userId) {
+    JAppUser user =
+        appUserRepository
+            .findById(userId)
+            .orElseThrow(() -> new NoSuchElementException("User not found"));
+
+    String std =
+        user.getRole() == UserRole.STUDENT
+            ? studentRepository.findById(userId).map(JStudent::getStd).orElse(null)
+            : null;
+
+    return new MeResponse(
+        user.getId(),
+        user.getFirstName(),
+        user.getLastName(),
+        user.getEmail(),
+        user.getRole(),
+        std);
   }
 }
