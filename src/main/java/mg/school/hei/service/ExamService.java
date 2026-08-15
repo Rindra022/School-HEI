@@ -7,6 +7,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import mg.school.hei.endpoint.rest.controller.dto.ExamRequest;
 import mg.school.hei.endpoint.rest.controller.dto.ExamResponse;
+import mg.school.hei.mapper.ExamMapper;
+import mg.school.hei.model.Exam;
 import mg.school.hei.repository.CourseAssignmentRepository;
 import mg.school.hei.repository.ExamRepository;
 import mg.school.hei.repository.model.JCourseAssignment;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExamService {
   private final ExamRepository examRepository;
   private final CourseAssignmentRepository courseAssignmentRepository;
+  private final ExamMapper examMapper;
 
   @Transactional
   public ExamResponse create(ExamRequest request) {
@@ -44,22 +47,23 @@ public class ExamService {
                 .coefficient(request.coefficient())
                 .build());
 
-    return toResponse(saved);
+    return toResponse(examMapper.toModel(saved));
   }
 
   public List<ExamResponse> listByAssignment(UUID assignmentId) {
-    return examRepository.findByAssignmentId(assignmentId).stream().map(this::toResponse).toList();
+    return examRepository.findByAssignmentId(assignmentId).stream()
+        .map(examMapper::toModel)
+        .map(this::toResponse)
+        .toList();
   }
 
   public ExamResponse get(UUID id) {
-    return examRepository
-        .findById(id)
-        .map(this::toResponse)
-        .orElseThrow(() -> new NoSuchElementException("Exam not found"));
+    JExam entity =
+        examRepository.findById(id).orElseThrow(() -> new NoSuchElementException("Exam not found"));
+    return toResponse(examMapper.toModel(entity));
   }
 
-  private ExamResponse toResponse(JExam e) {
-    return new ExamResponse(
-        e.getId(), e.getAssignment().getId(), e.getDateExam(), e.getCoefficient());
+  private ExamResponse toResponse(Exam e) {
+    return new ExamResponse(e.id(), e.assignment().id(), e.dateExam(), e.coefficient());
   }
 }
