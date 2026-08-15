@@ -109,4 +109,22 @@ public class GradeService {
         g.previousGrade() != null ? g.previousGrade().id() : null,
         g.current());
   }
+
+  public List<GradeResponse> list(UUID studentId, UUID examId) {
+    if (studentId != null && examId != null) {
+      return gradeRepository
+          .findByStudentIdAndExamIdAndCurrentTrue(studentId, examId)
+          .map(gradeMapper::toModel)
+          .map(this::toResponse)
+          .map(List::of)
+          .orElse(List.of());
+    }
+    if (studentId != null) {
+      return gradeRepository.findByStudentIdAndCurrentTrue(studentId).stream()
+          .map(gradeMapper::toModel)
+          .map(this::toResponse)
+          .toList();
+    }
+    return List.of();
+  }
 }

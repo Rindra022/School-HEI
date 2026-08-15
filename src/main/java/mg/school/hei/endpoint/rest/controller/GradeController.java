@@ -17,8 +17,9 @@ public class GradeController {
   private final GradeService gradeService;
 
   @GetMapping("/grades")
-  public List<GradeResponse> list(@RequestParam UUID studentId) {
-    return gradeService.list(studentId);
+  public List<GradeResponse> list(
+      @RequestParam(required = false) UUID studentId, @RequestParam(required = false) UUID examId) {
+    return gradeService.list(studentId, examId);
   }
 
   @PostMapping("/grades")
