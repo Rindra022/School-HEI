@@ -7,6 +7,7 @@ import mg.school.hei.conf.FacadeIT;
 import mg.school.hei.conf.RestTemplateTestConfig;
 import mg.school.hei.endpoint.rest.controller.dto.*;
 import mg.school.hei.repository.PromotionRepository;
+import mg.school.hei.repository.StudentRepository;
 import mg.school.hei.repository.model.JPromotion;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +26,7 @@ class AuthControllerIT extends FacadeIT {
 
   @Autowired private TestRestTemplate restTemplate;
   @Autowired private PromotionRepository promotionRepository;
+  @Autowired private StudentRepository studentRepository;
 
   private java.util.UUID promotionId;
 
@@ -35,6 +37,7 @@ class AuthControllerIT extends FacadeIT {
 
   @AfterEach
   void tearDown() {
+    studentRepository.deleteAll();
     promotionRepository.deleteAll();
   }
 
