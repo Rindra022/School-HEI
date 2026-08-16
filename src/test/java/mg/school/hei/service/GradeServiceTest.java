@@ -89,6 +89,7 @@ class GradeServiceTest {
     when(gradeRepository.findByStudentIdAndExamIdAndCurrentTrue(studentId, examId))
         .thenReturn(Optional.of(previous));
     when(gradeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(gradeRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
     when(gradeMapper.toModel(any()))
         .thenReturn(fakeModel(UUID.randomUUID(), new BigDecimal("14"), true, null));
 
@@ -97,7 +98,8 @@ class GradeServiceTest {
     service.record(request);
 
     assertThat(previous.isCurrent()).isFalse();
-    verify(gradeRepository, times(2)).save(any());
+    verify(gradeRepository, times(1)).saveAndFlush(any());
+    verify(gradeRepository, times(1)).save(any());
   }
 
   @Test

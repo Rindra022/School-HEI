@@ -62,7 +62,7 @@ class AuthServiceTest {
     when(promotionRepository.findById(promotionId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.register(request))
-        .isInstanceOf(java.util.NoSuchElementException.class);
+        .isInstanceOf(mg.school.hei.exception.ResourceNotFoundException.class);
   }
 
   @Test
