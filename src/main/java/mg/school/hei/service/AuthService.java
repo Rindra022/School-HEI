@@ -8,6 +8,7 @@ import mg.school.hei.endpoint.rest.controller.dto.AuthResponse;
 import mg.school.hei.endpoint.rest.controller.dto.LoginRequest;
 import mg.school.hei.endpoint.rest.controller.dto.MeResponse;
 import mg.school.hei.endpoint.rest.controller.dto.RegisterRequest;
+import mg.school.hei.exception.ResourceNotFoundException;
 import mg.school.hei.model.UserRole;
 import mg.school.hei.repository.AppUserRepository;
 import mg.school.hei.repository.PromotionRepository;
@@ -41,7 +42,7 @@ public class AuthService {
     JPromotion promotion =
         promotionRepository
             .findById(request.promotionId())
-            .orElseThrow(() -> new NoSuchElementException("Promotion not found"));
+            .orElseThrow(() -> new ResourceNotFoundException("Promotion not found"));
 
     JAppUser user =
         appUserRepository.save(
