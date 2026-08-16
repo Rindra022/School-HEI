@@ -50,7 +50,7 @@ public class GradeService {
     current.ifPresent(
         previous -> {
           previous.setCurrent(false);
-          gradeRepository.save(previous);
+          gradeRepository.saveAndFlush(previous);
         });
 
     JGrade saved =
@@ -89,8 +89,14 @@ public class GradeService {
             .findById(id)
             .orElseThrow(() -> new NoSuchElementException("Grade not found"));
 
+    JGrade current =
+        gradeRepository
+            .findByStudentIdAndExamIdAndCurrentTrue(
+                entity.getStudent().getId(), entity.getExam().getId())
+            .orElse(entity);
+
     LinkedList<GradeResponse> chain = new LinkedList<>();
-    JGrade cursor = entity;
+    JGrade cursor = current;
     while (cursor != null) {
       chain.addFirst(toResponse(gradeMapper.toModel(cursor)));
       cursor = cursor.getPreviousGrade();
