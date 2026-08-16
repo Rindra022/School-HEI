@@ -125,6 +125,12 @@ public class GradeService {
           .map(this::toResponse)
           .toList();
     }
+    if (examId != null) {
+      return gradeRepository.findByExamIdAndCurrentTrue(examId).stream()
+          .map(gradeMapper::toModel)
+          .map(this::toResponse)
+          .toList();
+    }
     return List.of();
   }
 }

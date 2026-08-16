@@ -40,10 +40,13 @@ public class GroupMembershipService {
         .findFirst()
         .ifPresent(
             current -> {
-              if (!current.getStartDate().isAfter(request.startDate())) {
-                current.setEndDate(request.startDate().minusDays(1));
-                groupMembershipRepository.save(current);
+              if (current.getStartDate().isAfter(request.startDate())) {
+                throw new IllegalArgumentException(
+                    "New membership cannot start before the currently active membership's start"
+                        + " date");
               }
+              current.setEndDate(request.startDate().minusDays(1));
+              groupMembershipRepository.save(current);
             });
 
     JGroupMembership saved =
