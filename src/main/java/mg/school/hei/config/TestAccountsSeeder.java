@@ -10,10 +10,12 @@ import mg.school.hei.repository.model.JAppUser;
 import mg.school.hei.repository.model.JPromotion;
 import mg.school.hei.service.AuthService;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(name = "app.seed-test-accounts", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class TestAccountsSeeder implements CommandLineRunner {
   private static final String TEST_PASSWORD = "password123";
