@@ -120,7 +120,6 @@ components:
         role: { type: string, enum: [STUDENT, TEACHER, ADMIN] }
         std: { type: string, nullable: true, description: "Present only for STUDENT" }
 
-    # ---------- Coéquipier ----------
     PromotionRequest:
       type: object
       properties:
@@ -185,7 +184,6 @@ components:
         generalAverage: { type: number, format: double }
         track: { type: string, enum: [EL, TN] }
 
-    # ---------- Moi ----------
     GroupMembershipRequest:
       type: object
       properties:
@@ -255,6 +253,15 @@ components:
         generalAverage: { type: number, format: double, nullable: true }
         totalCredits: { type: integer }
         complete: { type: boolean, description: "false if provisional (at least one course incomplete)" }
+    FullTranscriptResponse:
+      type: object
+      properties:
+        studentId: { type: string, format: uuid }
+        std: { type: string }
+        years: { type: array, items: { $ref: '#/components/schemas/TranscriptResponse' } }
+        cumulativeGeneralAverage: { type: number, format: double, nullable: true }
+        cumulativeCredits: { type: integer }
+        complete: { type: boolean, description: "false if any year is incomplete" }
 
 paths:
   /ping:
@@ -313,7 +320,6 @@ paths:
               schema: { $ref: '#/components/schemas/MeResponse' }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  # ==================== Promotions — coéquipier ====================
   /promotions:
     get:
       tags: [Promotions]
@@ -413,7 +419,6 @@ paths:
         '302': { description: Redirect to a signed S3 URL of the generated XLSX }
         '403': { $ref: '#/components/responses/Forbidden' }
 
-  # ==================== Courses — coéquipier ====================
   /courses:
     get:
       tags: [Courses]
@@ -485,7 +490,6 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { description: Course still has assignments attached }
 
-  # ==================== Groups — coéquipier ====================
   /groups:
     get:
       tags: [Groups]
@@ -557,7 +561,6 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { description: Group still referenced by memberships or assignments }
 
-  # ==================== Course Assignments — coéquipier ====================
   /course-assignments:
     get:
       tags: [Course Assignments]
@@ -614,7 +617,6 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { description: Assignment still has exams attached }
 
-  # ==================== Group Memberships — moi ====================
   /group-memberships:
     get:
       tags: [Group Memberships]
@@ -664,7 +666,6 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
-  # ==================== Exams — moi ====================
   /exams:
     get:
       tags: [Exams]
@@ -722,7 +723,6 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { description: Exam already has grades recorded }
 
-  # ==================== Grades — moi ====================
   /grades:
     get:
       tags: [Grades]
@@ -789,7 +789,6 @@ paths:
               schema: { type: array, items: { $ref: '#/components/schemas/GradeResponse' } }
         '403': { $ref: '#/components/responses/Forbidden' }
 
-  # ==================== Transcripts — moi ====================
   /students/{id}/transcript:
     get:
       tags: [Transcripts]
@@ -806,14 +805,33 @@ paths:
               schema: { $ref: '#/components/schemas/TranscriptResponse' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  /students/{id}/transcript/full:
+    get:
+      tags: [ Transcripts ]
+      operationId: getFullTranscript
+      summary: Get a student's cumulative transcript across all academic years
+      parameters:
+        - { $ref: '#/components/parameters/idPathParam' }
+      responses:
+        '200':
+          description: Full transcript
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FullTranscriptResponse' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
   /students/{id}/transcript/pdf:
     post:
-      tags: [Transcripts]
+      tags: [ Transcripts ]
       operationId: sendTranscriptPdf
       summary: Generate the transcript as PDF, upload to S3, and email it asynchronously
       parameters:
         - { $ref: '#/components/parameters/idPathParam' }
-        - { $ref: '#/components/parameters/academicYearQueryParam' }
+        - name: academicYear
+          in: query
+          required: false
+          schema: { type: integer, example: 2026 }
+          description: If omitted, generates a PDF covering the full 3-year cumulative transcript
       responses:
         '202': { description: Accepted — the PDF will be generated and emailed asynchronously }
         '403': { $ref: '#/components/responses/Forbidden' }
