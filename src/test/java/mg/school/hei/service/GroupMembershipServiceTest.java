@@ -50,7 +50,7 @@ class GroupMembershipServiceTest {
         .thenReturn(
             new GroupMembership(
                 UUID.randomUUID(),
-                new Student(studentId, "STD24001", null),
+                new Student(studentId, "STD24001", null, null),
                 new AppGroup(groupId, "K3", null),
                 LocalDate.of(2024, 11, 15),
                 null));
