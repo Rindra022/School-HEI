@@ -36,6 +36,7 @@ class ExamControllerIT extends FacadeIT {
   @Autowired private ExamRepository examRepository;
   @Autowired private PromotionRepository promotionRepository;
   @Autowired private StudentRepository studentRepository;
+  @Autowired private mg.school.hei.security.jwt.JwtService jwtService;
 
   private HttpHeaders authHeaders;
   private UUID assignmentId;
@@ -78,17 +79,8 @@ class ExamControllerIT extends FacadeIT {
                     .build())
             .getId();
 
-    var promotion = promotionRepository.save(JPromotion.builder().year(2024).build());
-    String email = "exam-auth-" + UUID.randomUUID() + "@example.com";
-    restTemplate.postForEntity(
-        "/register",
-        new RegisterRequest("Exam", "Tester", null, email, "password123", null, promotion.getId()),
-        Void.class);
-    var login =
-        restTemplate.postForEntity(
-            "/login", new LoginRequest(email, "password123"), AuthResponse.class);
     authHeaders = new HttpHeaders();
-    authHeaders.setBearerAuth(login.getBody().token());
+    authHeaders.setBearerAuth(jwtService.generateToken(teacher.getId(), UserRole.TEACHER));
   }
 
   @AfterEach

@@ -9,11 +9,15 @@ import mg.school.hei.endpoint.rest.controller.dto.ExamRequest;
 import mg.school.hei.endpoint.rest.controller.dto.ExamResponse;
 import mg.school.hei.mapper.ExamMapper;
 import mg.school.hei.model.Exam;
+import mg.school.hei.model.UserRole;
 import mg.school.hei.repository.CourseAssignmentRepository;
 import mg.school.hei.repository.ExamRepository;
 import mg.school.hei.repository.GradeRepository;
 import mg.school.hei.repository.model.JCourseAssignment;
 import mg.school.hei.repository.model.JExam;
+import mg.school.hei.security.model.Principal;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +35,13 @@ public class ExamService {
         courseAssignmentRepository
             .findById(request.assignmentId())
             .orElseThrow(() -> new NoSuchElementException("Course assignment not found"));
+
+    Principal principal =
+        (Principal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    if (principal.role() == UserRole.TEACHER
+        && !assignment.getTeacher().getId().equals(principal.userId())) {
+      throw new AccessDeniedException("You can only create exams for your own courses");
+    }
 
     BigDecimal existingSum =
         examRepository.findByAssignmentId(assignment.getId()).stream()
