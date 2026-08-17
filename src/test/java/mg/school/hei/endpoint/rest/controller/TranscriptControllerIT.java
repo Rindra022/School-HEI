@@ -96,20 +96,35 @@ class TranscriptControllerIT extends FacadeIT {
                 .academicYear(2024)
                 .build());
 
+    var adminUser =
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Admin")
+                .lastName("Transcript")
+                .email("transcript-admin-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.ADMIN)
+                .createdAt(Instant.now())
+                .build());
+    var adminHeaders = new HttpHeaders();
+    adminHeaders.setBearerAuth(jwtService.generateToken(adminUser.getId(), UserRole.ADMIN));
     var groupMembershipRequest =
         new GroupMembershipRequest(studentId, group.getId(), LocalDate.of(2024, 9, 1));
     restTemplate.exchange(
         "/group-memberships",
         HttpMethod.POST,
-        new HttpEntity<>(groupMembershipRequest, authHeaders()),
+        new HttpEntity<>(groupMembershipRequest, adminHeaders),
         GroupMembershipResponse.class);
+
+    var teacherHeaders = new HttpHeaders();
+    teacherHeaders.setBearerAuth(jwtService.generateToken(teacher.getId(), UserRole.TEACHER));
 
     var examResponse =
         restTemplate.exchange(
             "/exams",
             HttpMethod.POST,
             new HttpEntity<>(
-                new ExamRequest(assignment.getId(), Instant.now(), BigDecimal.ONE), authHeaders()),
+                new ExamRequest(assignment.getId(), Instant.now(), BigDecimal.ONE), teacherHeaders),
             ExamResponse.class);
 
     restTemplate.exchange(
@@ -117,7 +132,7 @@ class TranscriptControllerIT extends FacadeIT {
         HttpMethod.POST,
         new HttpEntity<>(
             new GradeRequest(studentId, examResponse.getBody().id(), new BigDecimal("16.00"), null),
-            authHeaders()),
+            teacherHeaders),
         GradeResponse.class);
   }
 
