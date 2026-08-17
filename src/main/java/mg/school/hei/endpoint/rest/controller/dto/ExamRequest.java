@@ -9,4 +9,5 @@ import java.util.UUID;
 public record ExamRequest(
     @NotNull UUID assignmentId,
     @NotNull Instant dateExam,
-    @NotNull @DecimalMin("0.0") @DecimalMax("1.0") java.math.BigDecimal coefficient) {}
+    @NotNull @DecimalMin(value = "0.0", inclusive = false) @DecimalMax("1.0")
+        java.math.BigDecimal coefficient) {}
