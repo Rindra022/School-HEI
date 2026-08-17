@@ -15,6 +15,10 @@ import lombok.*;
 public class JStudent {
   @Id private UUID id;
 
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "id", insertable = false, updatable = false)
+  private JAppUser appUser;
+
   @Column(nullable = false, unique = true)
   private String std;
 
