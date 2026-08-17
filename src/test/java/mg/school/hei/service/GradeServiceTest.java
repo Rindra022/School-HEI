@@ -33,7 +33,7 @@ class GradeServiceTest {
   private Grade fakeModel(UUID id, BigDecimal value, boolean current, Grade previous) {
     return new Grade(
         id,
-        new Student(UUID.randomUUID(), "STD24001", null),
+        new Student(UUID.randomUUID(), "STD24001", null, null),
         new Exam(UUID.randomUUID(), null, java.time.Instant.now(), BigDecimal.ONE),
         value,
         java.time.Instant.now(),

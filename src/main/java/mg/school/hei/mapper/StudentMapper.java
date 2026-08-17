@@ -9,12 +9,14 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class StudentMapper {
   private final PromotionMapper promotionMapper;
+  private final AppUserMapper appUserMapper;
 
   public Student toModel(JStudent entity) {
     return Student.builder()
         .id(entity.getId())
         .std(entity.getStd())
         .promotion(promotionMapper.toModel(entity.getPromotion()))
+        .appUser(appUserMapper.toModel(entity.getAppUser()))
         .build();
   }
 
@@ -23,6 +25,7 @@ public class StudentMapper {
         .id(model.id())
         .std(model.std())
         .promotion(promotionMapper.toEntity(model.promotion()))
+        .appUser(appUserMapper.toEntity(model.appUser()))
         .build();
   }
 }
