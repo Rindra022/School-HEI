@@ -11,12 +11,16 @@ import mg.school.hei.endpoint.rest.controller.dto.GradeRequest;
 import mg.school.hei.endpoint.rest.controller.dto.GradeResponse;
 import mg.school.hei.mapper.GradeMapper;
 import mg.school.hei.model.Grade;
+import mg.school.hei.model.UserRole;
 import mg.school.hei.repository.ExamRepository;
 import mg.school.hei.repository.GradeRepository;
 import mg.school.hei.repository.StudentRepository;
 import mg.school.hei.repository.model.JExam;
 import mg.school.hei.repository.model.JGrade;
 import mg.school.hei.repository.model.JStudent;
+import mg.school.hei.security.model.Principal;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +43,13 @@ public class GradeService {
         examRepository
             .findById(request.examId())
             .orElseThrow(() -> new NoSuchElementException("Exam not found"));
+
+    Principal principal =
+        (Principal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    if (principal.role() == UserRole.TEACHER
+        && !exam.getAssignment().getTeacher().getId().equals(principal.userId())) {
+      throw new AccessDeniedException("You can only grade exams for your own courses");
+    }
 
     Optional<JGrade> current =
         gradeRepository.findByStudentIdAndExamIdAndCurrentTrue(student.getId(), exam.getId());
@@ -117,6 +128,11 @@ public class GradeService {
   }
 
   public List<GradeResponse> list(UUID studentId, UUID examId) {
+    Principal principal =
+        (Principal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    if (principal.role() == UserRole.STUDENT) {
+      studentId = principal.userId();
+    }
     if (studentId != null && examId != null) {
       return gradeRepository
           .findByStudentIdAndExamIdAndCurrentTrue(studentId, examId)

@@ -13,6 +13,7 @@ import mg.school.hei.model.Track;
 import mg.school.hei.model.UserRole;
 import mg.school.hei.repository.*;
 import mg.school.hei.repository.model.*;
+import mg.school.hei.security.jwt.JwtService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,10 +38,12 @@ class GradeControllerIT extends FacadeIT {
   @Autowired private CourseAssignmentRepository courseAssignmentRepository;
   @Autowired private ExamRepository examRepository;
   @Autowired private GradeRepository gradeRepository;
+  @Autowired private JwtService jwtService;
 
   private HttpHeaders authHeaders;
   private UUID studentId;
   private UUID examId;
+  private HttpHeaders teacherHeaders;
 
   @BeforeEach
   void setUp() {
@@ -93,23 +96,17 @@ class GradeControllerIT extends FacadeIT {
                 .academicYear(2024)
                 .build());
 
-    String email = "grade-auth-" + UUID.randomUUID() + "@example.com";
-    restTemplate.postForEntity(
-        "/register",
-        new RegisterRequest("Grade", "Tester", null, email, "password123", null, promotion.getId()),
-        Void.class);
-    var login =
-        restTemplate.postForEntity(
-            "/login", new LoginRequest(email, "password123"), AuthResponse.class);
     authHeaders = new HttpHeaders();
-    authHeaders.setBearerAuth(login.getBody().token());
+    authHeaders.setBearerAuth(jwtService.generateToken(studentUser.getId(), UserRole.STUDENT));
 
+    teacherHeaders = new HttpHeaders();
+    teacherHeaders.setBearerAuth(jwtService.generateToken(teacher.getId(), UserRole.TEACHER));
     var examResponse =
         restTemplate.exchange(
             "/exams",
             HttpMethod.POST,
             new HttpEntity<>(
-                new ExamRequest(assignment.getId(), Instant.now(), BigDecimal.ONE), authHeaders),
+                new ExamRequest(assignment.getId(), Instant.now(), BigDecimal.ONE), teacherHeaders),
             ExamResponse.class);
     examId = examResponse.getBody().id();
   }
@@ -195,7 +192,7 @@ class GradeControllerIT extends FacadeIT {
     var request = new GradeRequest(studentId, UUID.randomUUID(), new BigDecimal("10.00"), null);
     var response =
         restTemplate.exchange(
-            "/grades", HttpMethod.POST, new HttpEntity<>(request, authHeaders), Object.class);
+            "/grades", HttpMethod.POST, new HttpEntity<>(request, teacherHeaders), Object.class);
     assertEquals(404, response.getStatusCode().value());
   }
 
@@ -205,7 +202,7 @@ class GradeControllerIT extends FacadeIT {
         restTemplate.exchange(
             "/grades",
             HttpMethod.POST,
-            new HttpEntity<>(request, authHeaders),
+            new HttpEntity<>(request, teacherHeaders),
             GradeResponse.class);
     assertEquals(201, response.getStatusCode().value());
     return response.getBody().id();
@@ -215,6 +212,6 @@ class GradeControllerIT extends FacadeIT {
       BigDecimal value, String reason) {
     var request = new GradeRequest(studentId, examId, value, reason);
     return restTemplate.exchange(
-        "/grades", HttpMethod.POST, new HttpEntity<>(request, authHeaders), Object.class);
+        "/grades", HttpMethod.POST, new HttpEntity<>(request, teacherHeaders), Object.class);
   }
 }
