@@ -13,6 +13,7 @@ import mg.school.hei.model.Track;
 import mg.school.hei.model.UserRole;
 import mg.school.hei.repository.*;
 import mg.school.hei.repository.model.*;
+import mg.school.hei.security.jwt.JwtService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,7 @@ class GroupMembershipControllerIT extends FacadeIT {
   @Autowired private StudentRepository studentRepository;
   @Autowired private AppGroupRepository appGroupRepository;
   @Autowired private GroupMembershipRepository groupMembershipRepository;
+  @Autowired private JwtService jwtService;
 
   private HttpHeaders authHeaders;
   private UUID studentId;
@@ -74,16 +76,18 @@ class GroupMembershipControllerIT extends FacadeIT {
                     .build())
             .getId();
 
-    String email = "gm-auth-" + UUID.randomUUID() + "@example.com";
-    restTemplate.postForEntity(
-        "/register",
-        new RegisterRequest("GM", "Tester", null, email, "password123", null, promotion.getId()),
-        Void.class);
-    var login =
-        restTemplate.postForEntity(
-            "/login", new LoginRequest(email, "password123"), AuthResponse.class);
+    var admin =
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("GM")
+                .lastName("Admin")
+                .email("gm-admin-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.ADMIN)
+                .createdAt(Instant.now())
+                .build());
     authHeaders = new HttpHeaders();
-    authHeaders.setBearerAuth(login.getBody().token());
+    authHeaders.setBearerAuth(jwtService.generateToken(admin.getId(), UserRole.ADMIN));
   }
 
   @AfterEach

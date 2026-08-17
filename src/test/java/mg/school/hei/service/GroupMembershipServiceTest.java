@@ -38,9 +38,13 @@ class GroupMembershipServiceTest {
     var groupId = UUID.randomUUID();
     var student = JStudent.builder().id(studentId).build();
     var group = JAppGroup.builder().id(groupId).build();
+    var previousGroup = JAppGroup.builder().id(UUID.randomUUID()).build();
     var active =
-        JGroupMembership.builder().startDate(LocalDate.of(2024, 9, 1)).endDate(null).build();
-
+        JGroupMembership.builder()
+            .group(previousGroup)
+            .startDate(LocalDate.of(2024, 9, 1))
+            .endDate(null)
+            .build();
     when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
     when(appGroupRepository.findById(groupId)).thenReturn(Optional.of(group));
     when(groupMembershipRepository.findByStudentIdOrderByStartDateAsc(studentId))
@@ -67,9 +71,13 @@ class GroupMembershipServiceTest {
   void create_should_reject_backdating_before_the_currently_active_membership() {
     var studentId = UUID.randomUUID();
     var groupId = UUID.randomUUID();
+    var previousGroup = JAppGroup.builder().id(UUID.randomUUID()).build();
     var active =
-        JGroupMembership.builder().startDate(LocalDate.of(2024, 11, 1)).endDate(null).build();
-
+        JGroupMembership.builder()
+            .group(previousGroup)
+            .startDate(LocalDate.of(2024, 11, 1))
+            .endDate(null)
+            .build();
     when(studentRepository.findById(studentId))
         .thenReturn(Optional.of(JStudent.builder().id(studentId).build()));
     when(appGroupRepository.findById(groupId))

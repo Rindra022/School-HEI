@@ -18,6 +18,8 @@ import mg.school.hei.repository.StudentRepository;
 import mg.school.hei.repository.model.JExam;
 import mg.school.hei.repository.model.JGrade;
 import mg.school.hei.repository.model.JStudent;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class GradeServiceTest {
@@ -40,6 +42,25 @@ class GradeServiceTest {
         null,
         previous,
         current);
+  }
+
+  @BeforeEach
+  void setUpSecurityContext() {
+    mg.school.hei.security.model.Principal principal =
+        mg.school.hei.security.model.Principal.builder()
+            .userId(UUID.randomUUID())
+            .role(mg.school.hei.model.UserRole.ADMIN)
+            .build();
+    var authentication =
+        new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
+            principal, null, java.util.List.of());
+    org.springframework.security.core.context.SecurityContextHolder.getContext()
+        .setAuthentication(authentication);
+  }
+
+  @AfterEach
+  void clearSecurityContext() {
+    org.springframework.security.core.context.SecurityContextHolder.clearContext();
   }
 
   @Test

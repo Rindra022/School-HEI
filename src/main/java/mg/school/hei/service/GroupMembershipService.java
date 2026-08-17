@@ -40,6 +40,9 @@ public class GroupMembershipService {
         .findFirst()
         .ifPresent(
             current -> {
+              if (current.getGroup().getId().equals(jGroup.getId())) {
+                throw new IllegalArgumentException("Student is already assigned to this group");
+              }
               if (current.getStartDate().isAfter(request.startDate())) {
                 throw new IllegalArgumentException(
                     "New membership cannot start before the currently active membership's start"

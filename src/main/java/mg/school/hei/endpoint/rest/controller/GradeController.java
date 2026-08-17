@@ -9,6 +9,7 @@ import mg.school.hei.endpoint.rest.controller.dto.GradeResponse;
 import mg.school.hei.service.GradeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,6 +24,7 @@ public class GradeController {
   }
 
   @PostMapping("/grades")
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
   public ResponseEntity<GradeResponse> record(@Valid @RequestBody GradeRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(gradeService.record(request));
   }

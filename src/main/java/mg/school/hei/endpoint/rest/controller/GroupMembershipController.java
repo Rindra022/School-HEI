@@ -9,6 +9,7 @@ import mg.school.hei.endpoint.rest.controller.dto.GroupMembershipResponse;
 import mg.school.hei.service.GroupMembershipService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,6 +23,7 @@ public class GroupMembershipController {
   }
 
   @PostMapping("/group-memberships")
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<GroupMembershipResponse> create(
       @Valid @RequestBody GroupMembershipRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(groupMembershipService.create(request));

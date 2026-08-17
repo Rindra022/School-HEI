@@ -10,13 +10,19 @@ import java.util.Optional;
 import java.util.UUID;
 import mg.school.hei.endpoint.rest.controller.dto.ExamRequest;
 import mg.school.hei.mapper.ExamMapper;
+import mg.school.hei.model.UserRole;
 import mg.school.hei.repository.CourseAssignmentRepository;
 import mg.school.hei.repository.ExamRepository;
 import mg.school.hei.repository.GradeRepository;
 import mg.school.hei.repository.model.JCourseAssignment;
 import mg.school.hei.repository.model.JExam;
 import mg.school.hei.repository.model.JGrade;
+import mg.school.hei.security.model.Principal;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 class ExamServiceTest {
 
@@ -28,6 +34,19 @@ class ExamServiceTest {
 
   private final ExamService service =
       new ExamService(examRepository, courseAssignmentRepository, gradeRepository, examMapper);
+
+  @BeforeEach
+  void setUpSecurityContext() {
+    Principal principal =
+        Principal.builder().userId(UUID.randomUUID()).role(UserRole.ADMIN).build();
+    var authentication = new UsernamePasswordAuthenticationToken(principal, null, List.of());
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+  }
+
+  @AfterEach
+  void clearSecurityContext() {
+    SecurityContextHolder.clearContext();
+  }
 
   @Test
   void create_should_reject_an_unknown_assignment() {

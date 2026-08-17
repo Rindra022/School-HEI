@@ -9,6 +9,7 @@ import mg.school.hei.endpoint.rest.controller.dto.ExamResponse;
 import mg.school.hei.service.ExamService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,6 +23,7 @@ public class ExamController {
   }
 
   @PostMapping("/exams")
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
   public ResponseEntity<ExamResponse> create(@Valid @RequestBody ExamRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(examService.create(request));
   }
@@ -32,6 +34,7 @@ public class ExamController {
   }
 
   @DeleteMapping("/exams/{id}")
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
   public ResponseEntity<Void> delete(@PathVariable UUID id) {
     examService.delete(id);
     return ResponseEntity.noContent().build();
