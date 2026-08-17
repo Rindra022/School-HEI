@@ -14,27 +14,27 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 public class CourseAssignmentController {
-    private final CourseAssignmentService courseAssignmentService;
+  private final CourseAssignmentService courseAssignmentService;
 
-    @GetMapping("/course-assignments")
-    public List<CourseAssignmentResponse> list(@RequestParam(required = false) Integer academicYear) {
-        return courseAssignmentService.list(academicYear);
-    }
+  @GetMapping("/course-assignments")
+  public List<CourseAssignmentResponse> list(@RequestParam(required = false) Integer academicYear) {
+    return courseAssignmentService.list(academicYear);
+  }
 
-    @PostMapping("/course-assignments")
-    public ResponseEntity<CourseAssignmentResponse> create(
-            @Valid @RequestBody CourseAssignmentRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(courseAssignmentService.create(request));
-    }
+  @PostMapping("/course-assignments")
+  public ResponseEntity<CourseAssignmentResponse> create(
+      @Valid @RequestBody CourseAssignmentRequest request) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(courseAssignmentService.create(request));
+  }
 
-    @GetMapping("/course-assignments/{id}")
-    public CourseAssignmentResponse get(@PathVariable UUID id) {
-        return courseAssignmentService.get(id);
-    }
+  @GetMapping("/course-assignments/{id}")
+  public CourseAssignmentResponse get(@PathVariable UUID id) {
+    return courseAssignmentService.get(id);
+  }
 
-    @DeleteMapping("/course-assignments/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        courseAssignmentService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
+  @DeleteMapping("/course-assignments/{id}")
+  public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    courseAssignmentService.delete(id);
+    return ResponseEntity.noContent().build();
+  }
 }

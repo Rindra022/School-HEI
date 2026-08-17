@@ -17,62 +17,62 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class PromotionService {
-    private final PromotionRepository promotionRepository;
-    private final StudentRepository studentRepository;
-    private final PromotionMapper promotionMapper;
+  private final PromotionRepository promotionRepository;
+  private final StudentRepository studentRepository;
+  private final PromotionMapper promotionMapper;
 
-    @Transactional
-    public PromotionResponse create(PromotionRequest request) {
-        rejectIfYearTaken(request.year(), null);
-        JPromotion saved = promotionRepository.save(JPromotion.builder().year(request.year()).build());
-        return toResponse(promotionMapper.toModel(saved));
-    }
+  @Transactional
+  public PromotionResponse create(PromotionRequest request) {
+    rejectIfYearTaken(request.year(), null);
+    JPromotion saved = promotionRepository.save(JPromotion.builder().year(request.year()).build());
+    return toResponse(promotionMapper.toModel(saved));
+  }
 
-    public List<PromotionResponse> list() {
-        return promotionRepository.findAll().stream()
-                .map(promotionMapper::toModel)
-                .map(this::toResponse)
-                .toList();
-    }
+  public List<PromotionResponse> list() {
+    return promotionRepository.findAll().stream()
+        .map(promotionMapper::toModel)
+        .map(this::toResponse)
+        .toList();
+  }
 
-    public PromotionResponse get(UUID id) {
-        return toResponse(promotionMapper.toModel(findOrThrow(id)));
-    }
+  public PromotionResponse get(UUID id) {
+    return toResponse(promotionMapper.toModel(findOrThrow(id)));
+  }
 
-    @Transactional
-    public PromotionResponse update(UUID id, PromotionRequest request) {
-        JPromotion entity = findOrThrow(id);
-        rejectIfYearTaken(request.year(), id);
-        entity.setYear(request.year());
-        return toResponse(promotionMapper.toModel(promotionRepository.save(entity)));
-    }
+  @Transactional
+  public PromotionResponse update(UUID id, PromotionRequest request) {
+    JPromotion entity = findOrThrow(id);
+    rejectIfYearTaken(request.year(), id);
+    entity.setYear(request.year());
+    return toResponse(promotionMapper.toModel(promotionRepository.save(entity)));
+  }
 
-    @Transactional
-    public void delete(UUID id) {
-        findOrThrow(id);
-        if (!studentRepository.findByPromotionId(id).isEmpty()) {
-            throw new IllegalStateException("Promotion still has students attached");
-        }
-        promotionRepository.deleteById(id);
+  @Transactional
+  public void delete(UUID id) {
+    findOrThrow(id);
+    if (!studentRepository.findByPromotionId(id).isEmpty()) {
+      throw new IllegalStateException("Promotion still has students attached");
     }
+    promotionRepository.deleteById(id);
+  }
 
-    private void rejectIfYearTaken(Integer year, UUID excludingId) {
-        promotionRepository
-                .findByYear(year)
-                .filter(p -> excludingId == null || !p.getId().equals(excludingId))
-                .ifPresent(
-                        p -> {
-                            throw new IllegalArgumentException("Promotion for year " + year + " already exists");
-                        });
-    }
+  private void rejectIfYearTaken(Integer year, UUID excludingId) {
+    promotionRepository
+        .findByYear(year)
+        .filter(p -> excludingId == null || !p.getId().equals(excludingId))
+        .ifPresent(
+            p -> {
+              throw new IllegalArgumentException("Promotion for year " + year + " already exists");
+            });
+  }
 
-    private JPromotion findOrThrow(UUID id) {
-        return promotionRepository
-                .findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Promotion not found"));
-    }
+  private JPromotion findOrThrow(UUID id) {
+    return promotionRepository
+        .findById(id)
+        .orElseThrow(() -> new NoSuchElementException("Promotion not found"));
+  }
 
-    private PromotionResponse toResponse(Promotion p) {
-        return new PromotionResponse(p.id(), p.year());
-    }
+  private PromotionResponse toResponse(Promotion p) {
+    return new PromotionResponse(p.id(), p.year());
+  }
 }

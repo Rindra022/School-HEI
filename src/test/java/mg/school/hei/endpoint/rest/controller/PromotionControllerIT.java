@@ -28,106 +28,106 @@ import org.springframework.http.HttpMethod;
 @Import(RestTemplateTestConfig.class)
 class PromotionControllerIT extends FacadeIT {
 
-    @Autowired private TestRestTemplate restTemplate;
-    @Autowired private PromotionRepository promotionRepository;
-    @Autowired private AppUserRepository appUserRepository;
-    @Autowired private JwtService jwtService;
-    private String token;
+  @Autowired private TestRestTemplate restTemplate;
+  @Autowired private PromotionRepository promotionRepository;
+  @Autowired private AppUserRepository appUserRepository;
+  @Autowired private JwtService jwtService;
+  private String token;
 
-    @BeforeEach
-    void setUp() {
-        promotionRepository.deleteAll();
-        var admin =
-                appUserRepository.save(
-                        JAppUser.builder()
-                                .firstName("Admin")
-                                .lastName("Test")
-                                .email("admin-promo-" + UUID.randomUUID() + "@example.com")
-                                .password("hashed")
-                                .role(UserRole.ADMIN)
-                                .createdAt(Instant.now())
-                                .build());
-        token = jwtService.generateToken(admin.getId(), admin.getRole());
-    }
+  @BeforeEach
+  void setUp() {
+    promotionRepository.deleteAll();
+    var admin =
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Admin")
+                .lastName("Test")
+                .email("admin-promo-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.ADMIN)
+                .createdAt(Instant.now())
+                .build());
+    token = jwtService.generateToken(admin.getId(), admin.getRole());
+  }
 
-    private HttpHeaders authHeaders() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
-        return headers;
-    }
+  private HttpHeaders authHeaders() {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(token);
+    return headers;
+  }
 
-    @Test
-    void creating_a_promotion_should_return_201() {
-        var response =
-                restTemplate.exchange(
-                        "/promotions",
-                        HttpMethod.POST,
-                        new HttpEntity<>(new PromotionRequest(2026), authHeaders()),
-                        PromotionResponse.class);
-
-        assertEquals(201, response.getStatusCode().value());
-        assertEquals(2026, response.getBody().year());
-    }
-
-    @Test
-    void creating_a_duplicate_year_should_return_400() {
+  @Test
+  void creating_a_promotion_should_return_201() {
+    var response =
         restTemplate.exchange(
-                "/promotions",
-                HttpMethod.POST,
-                new HttpEntity<>(new PromotionRequest(2027), authHeaders()),
-                PromotionResponse.class);
-        var response =
-                restTemplate.exchange(
-                        "/promotions",
-                        HttpMethod.POST,
-                        new HttpEntity<>(new PromotionRequest(2027), authHeaders()),
-                        Object.class);
+            "/promotions",
+            HttpMethod.POST,
+            new HttpEntity<>(new PromotionRequest(2026), authHeaders()),
+            PromotionResponse.class);
 
-        assertEquals(400, response.getStatusCode().value());
-    }
+    assertEquals(201, response.getStatusCode().value());
+    assertEquals(2026, response.getBody().year());
+  }
 
-    @Test
-    void listing_promotions_should_return_200() {
+  @Test
+  void creating_a_duplicate_year_should_return_400() {
+    restTemplate.exchange(
+        "/promotions",
+        HttpMethod.POST,
+        new HttpEntity<>(new PromotionRequest(2027), authHeaders()),
+        PromotionResponse.class);
+    var response =
         restTemplate.exchange(
-                "/promotions",
-                HttpMethod.POST,
-                new HttpEntity<>(new PromotionRequest(2028), authHeaders()),
-                PromotionResponse.class);
+            "/promotions",
+            HttpMethod.POST,
+            new HttpEntity<>(new PromotionRequest(2027), authHeaders()),
+            Object.class);
 
-        var response = restTemplate.getForEntity("/promotions", PromotionResponse[].class);
+    assertEquals(400, response.getStatusCode().value());
+  }
 
-        assertEquals(200, response.getStatusCode().value());
-        assertTrue(response.getBody().length >= 1);
-    }
+  @Test
+  void listing_promotions_should_return_200() {
+    restTemplate.exchange(
+        "/promotions",
+        HttpMethod.POST,
+        new HttpEntity<>(new PromotionRequest(2028), authHeaders()),
+        PromotionResponse.class);
 
-    @Test
-    void updating_an_unknown_promotion_should_return_404() {
-        var response =
-                restTemplate.exchange(
-                        "/promotions/" + UUID.randomUUID(),
-                        HttpMethod.PATCH,
-                        new HttpEntity<>(new PromotionRequest(2030), authHeaders()),
-                        Object.class);
+    var response = restTemplate.getForEntity("/promotions", PromotionResponse[].class);
 
-        assertEquals(404, response.getStatusCode().value());
-    }
+    assertEquals(200, response.getStatusCode().value());
+    assertTrue(response.getBody().length >= 1);
+  }
 
-    @Test
-    void deleting_a_promotion_without_students_should_return_204() {
-        var created =
-                restTemplate.exchange(
-                        "/promotions",
-                        HttpMethod.POST,
-                        new HttpEntity<>(new PromotionRequest(2029), authHeaders()),
-                        PromotionResponse.class);
+  @Test
+  void updating_an_unknown_promotion_should_return_404() {
+    var response =
+        restTemplate.exchange(
+            "/promotions/" + UUID.randomUUID(),
+            HttpMethod.PATCH,
+            new HttpEntity<>(new PromotionRequest(2030), authHeaders()),
+            Object.class);
 
-        var response =
-                restTemplate.exchange(
-                        "/promotions/" + created.getBody().id(),
-                        HttpMethod.DELETE,
-                        new HttpEntity<>(null, authHeaders()),
-                        Void.class);
+    assertEquals(404, response.getStatusCode().value());
+  }
 
-        assertEquals(204, response.getStatusCode().value());
-    }
+  @Test
+  void deleting_a_promotion_without_students_should_return_204() {
+    var created =
+        restTemplate.exchange(
+            "/promotions",
+            HttpMethod.POST,
+            new HttpEntity<>(new PromotionRequest(2029), authHeaders()),
+            PromotionResponse.class);
+
+    var response =
+        restTemplate.exchange(
+            "/promotions/" + created.getBody().id(),
+            HttpMethod.DELETE,
+            new HttpEntity<>(null, authHeaders()),
+            Void.class);
+
+    assertEquals(204, response.getStatusCode().value());
+  }
 }

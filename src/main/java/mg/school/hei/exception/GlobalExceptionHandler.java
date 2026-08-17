@@ -29,11 +29,12 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<Object> handleDataIntegrityViolation(DataIntegrityViolationException e) {
-    return build(HttpStatus.CONFLICT, "This operation violates a uniqueness or referential constraint");
+    return build(
+        HttpStatus.CONFLICT, "This operation violates a uniqueness or referential constraint");
   }
 
   private ResponseEntity<Object> build(HttpStatus status, String message) {
     return ResponseEntity.status(status)
-            .body(Map.of("timestamp", Instant.now(), "status", status.value(), "message", message));
+        .body(Map.of("timestamp", Instant.now(), "status", status.value(), "message", message));
   }
 }

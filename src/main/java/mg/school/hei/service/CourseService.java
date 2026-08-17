@@ -17,59 +17,61 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class CourseService {
-    private final CourseRepository courseRepository;
-    private final CourseAssignmentRepository courseAssignmentRepository;
-    private final CourseMapper courseMapper;
+  private final CourseRepository courseRepository;
+  private final CourseAssignmentRepository courseAssignmentRepository;
+  private final CourseMapper courseMapper;
 
-    @Transactional
-    public CourseResponse create(CourseRequest request) {
-        JCourse saved =
-                courseRepository.save(
-                        JCourse.builder()
-                                .ref(request.ref())
-                                .title(request.title())
-                                .credits(request.credits())
-                                .build());
-        return toResponse(courseMapper.toModel(saved));
-    }
+  @Transactional
+  public CourseResponse create(CourseRequest request) {
+    JCourse saved =
+        courseRepository.save(
+            JCourse.builder()
+                .ref(request.ref())
+                .title(request.title())
+                .credits(request.credits())
+                .build());
+    return toResponse(courseMapper.toModel(saved));
+  }
 
-    public List<CourseResponse> list() {
-        return courseRepository.findAll().stream()
-                .map(courseMapper::toModel)
-                .map(this::toResponse)
-                .toList();
-    }
+  public List<CourseResponse> list() {
+    return courseRepository.findAll().stream()
+        .map(courseMapper::toModel)
+        .map(this::toResponse)
+        .toList();
+  }
 
-    public CourseResponse get(UUID id) {
-        return toResponse(courseMapper.toModel(findOrThrow(id)));
-    }
+  public CourseResponse get(UUID id) {
+    return toResponse(courseMapper.toModel(findOrThrow(id)));
+  }
 
-    @Transactional
-    public CourseResponse update(UUID id, CourseRequest request) {
-        JCourse entity = findOrThrow(id);
-        entity.setRef(request.ref());
-        entity.setTitle(request.title());
-        entity.setCredits(request.credits());
-        return toResponse(courseMapper.toModel(courseRepository.save(entity)));
-    }
+  @Transactional
+  public CourseResponse update(UUID id, CourseRequest request) {
+    JCourse entity = findOrThrow(id);
+    entity.setRef(request.ref());
+    entity.setTitle(request.title());
+    entity.setCredits(request.credits());
+    return toResponse(courseMapper.toModel(courseRepository.save(entity)));
+  }
 
-    @Transactional
-    public void delete(UUID id) {
-        findOrThrow(id);
-        boolean hasAssignments =
-                courseAssignmentRepository.findAll().stream()
-                        .anyMatch(a -> a.getCourse().getId().equals(id));
-        if (hasAssignments) {
-            throw new IllegalStateException("Course still has assignments attached");
-        }
-        courseRepository.deleteById(id);
+  @Transactional
+  public void delete(UUID id) {
+    findOrThrow(id);
+    boolean hasAssignments =
+        courseAssignmentRepository.findAll().stream()
+            .anyMatch(a -> a.getCourse().getId().equals(id));
+    if (hasAssignments) {
+      throw new IllegalStateException("Course still has assignments attached");
     }
+    courseRepository.deleteById(id);
+  }
 
-    private JCourse findOrThrow(UUID id) {
-        return courseRepository.findById(id).orElseThrow(() -> new NoSuchElementException("Course not found"));
-    }
+  private JCourse findOrThrow(UUID id) {
+    return courseRepository
+        .findById(id)
+        .orElseThrow(() -> new NoSuchElementException("Course not found"));
+  }
 
-    private CourseResponse toResponse(Course c) {
-        return new CourseResponse(c.id(), c.ref(), c.title(), c.credits());
-    }
+  private CourseResponse toResponse(Course c) {
+    return new CourseResponse(c.id(), c.ref(), c.title(), c.credits());
+  }
 }

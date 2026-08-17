@@ -14,31 +14,31 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 public class CourseController {
-    private final CourseService courseService;
+  private final CourseService courseService;
 
-    @GetMapping("/courses")
-    public List<CourseResponse> list() {
-        return courseService.list();
-    }
+  @GetMapping("/courses")
+  public List<CourseResponse> list() {
+    return courseService.list();
+  }
 
-    @PostMapping("/courses")
-    public ResponseEntity<CourseResponse> create(@Valid @RequestBody CourseRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(courseService.create(request));
-    }
+  @PostMapping("/courses")
+  public ResponseEntity<CourseResponse> create(@Valid @RequestBody CourseRequest request) {
+    return ResponseEntity.status(HttpStatus.CREATED).body(courseService.create(request));
+  }
 
-    @GetMapping("/courses/{id}")
-    public CourseResponse get(@PathVariable UUID id) {
-        return courseService.get(id);
-    }
+  @GetMapping("/courses/{id}")
+  public CourseResponse get(@PathVariable UUID id) {
+    return courseService.get(id);
+  }
 
-    @PatchMapping("/courses/{id}")
-    public CourseResponse update(@PathVariable UUID id, @Valid @RequestBody CourseRequest request) {
-        return courseService.update(id, request);
-    }
+  @PatchMapping("/courses/{id}")
+  public CourseResponse update(@PathVariable UUID id, @Valid @RequestBody CourseRequest request) {
+    return courseService.update(id, request);
+  }
 
-    @DeleteMapping("/courses/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        courseService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
+  @DeleteMapping("/courses/{id}")
+  public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    courseService.delete(id);
+    return ResponseEntity.noContent().build();
+  }
 }

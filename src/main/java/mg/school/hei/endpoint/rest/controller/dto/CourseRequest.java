@@ -5,4 +5,4 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record CourseRequest(
-        @NotBlank String ref, @NotBlank String title, @NotNull @Min(1) Integer credits) {}
+    @NotBlank String ref, @NotBlank String title, @NotNull @Min(1) Integer credits) {}

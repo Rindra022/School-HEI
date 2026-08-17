@@ -19,84 +19,81 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class CourseAssignmentService {
-    private final CourseAssignmentRepository courseAssignmentRepository;
-    private final CourseRepository courseRepository;
-    private final AppUserRepository appUserRepository;
-    private final AppGroupRepository appGroupRepository;
-    private final ExamRepository examRepository;
-    private final CourseAssignmentMapper courseAssignmentMapper;
+  private final CourseAssignmentRepository courseAssignmentRepository;
+  private final CourseRepository courseRepository;
+  private final AppUserRepository appUserRepository;
+  private final AppGroupRepository appGroupRepository;
+  private final ExamRepository examRepository;
+  private final CourseAssignmentMapper courseAssignmentMapper;
 
-    @Transactional
-    public CourseAssignmentResponse create(CourseAssignmentRequest request) {
-        JCourse course =
-                courseRepository
-                        .findById(request.courseId())
-                        .orElseThrow(() -> new NoSuchElementException("Course not found"));
-        JAppUser teacher =
-                appUserRepository
-                        .findById(request.teacherId())
-                        .orElseThrow(() -> new NoSuchElementException("Teacher not found"));
-        JAppGroup group =
-                appGroupRepository
-                        .findById(request.groupId())
-                        .orElseThrow(() -> new NoSuchElementException("Group not found"));
+  @Transactional
+  public CourseAssignmentResponse create(CourseAssignmentRequest request) {
+    JCourse course =
+        courseRepository
+            .findById(request.courseId())
+            .orElseThrow(() -> new NoSuchElementException("Course not found"));
+    JAppUser teacher =
+        appUserRepository
+            .findById(request.teacherId())
+            .orElseThrow(() -> new NoSuchElementException("Teacher not found"));
+    JAppGroup group =
+        appGroupRepository
+            .findById(request.groupId())
+            .orElseThrow(() -> new NoSuchElementException("Group not found"));
 
-        boolean alreadyAssigned =
-                courseAssignmentRepository.findByAcademicYear(request.academicYear()).stream()
-                        .anyMatch(
-                                a ->
-                                        a.getCourse().getId().equals(course.getId())
-                                                && a.getTeacher().getId().equals(teacher.getId())
-                                                && a.getGroup().getId().equals(group.getId()));
-        if (alreadyAssigned) {
-            throw new IllegalArgumentException("This assignment already exists for this academic year");
-        }
-
-        JCourseAssignment saved =
-                courseAssignmentRepository.save(
-                        JCourseAssignment.builder()
-                                .course(course)
-                                .teacher(teacher)
-                                .group(group)
-                                .academicYear(request.academicYear())
-                                .build());
-
-        return toResponse(courseAssignmentMapper.toModel(saved));
+    boolean alreadyAssigned =
+        courseAssignmentRepository.findByAcademicYear(request.academicYear()).stream()
+            .anyMatch(
+                a ->
+                    a.getCourse().getId().equals(course.getId())
+                        && a.getTeacher().getId().equals(teacher.getId())
+                        && a.getGroup().getId().equals(group.getId()));
+    if (alreadyAssigned) {
+      throw new IllegalArgumentException("This assignment already exists for this academic year");
     }
 
-    public List<CourseAssignmentResponse> list(Integer academicYear) {
-        var assignments =
-                academicYear != null
-                        ? courseAssignmentRepository.findByAcademicYear(academicYear)
-                        : courseAssignmentRepository.findAll();
+    JCourseAssignment saved =
+        courseAssignmentRepository.save(
+            JCourseAssignment.builder()
+                .course(course)
+                .teacher(teacher)
+                .group(group)
+                .academicYear(request.academicYear())
+                .build());
 
-        return assignments.stream()
-                .map(courseAssignmentMapper::toModel)
-                .map(this::toResponse)
-                .toList();
-    }
+    return toResponse(courseAssignmentMapper.toModel(saved));
+  }
 
-    public CourseAssignmentResponse get(UUID id) {
-        return toResponse(courseAssignmentMapper.toModel(findOrThrow(id)));
-    }
+  public List<CourseAssignmentResponse> list(Integer academicYear) {
+    var assignments =
+        academicYear != null
+            ? courseAssignmentRepository.findByAcademicYear(academicYear)
+            : courseAssignmentRepository.findAll();
 
-    @Transactional
-    public void delete(UUID id) {
-        findOrThrow(id);
-        if (!examRepository.findByAssignmentId(id).isEmpty()) {
-            throw new IllegalStateException("Assignment still has exams attached");
-        }
-        courseAssignmentRepository.deleteById(id);
-    }
+    return assignments.stream().map(courseAssignmentMapper::toModel).map(this::toResponse).toList();
+  }
 
-    private JCourseAssignment findOrThrow(UUID id) {
-        return courseAssignmentRepository
-                .findById(id)
-                .orElseThrow(() -> new NoSuchElementException("Course assignment not found"));
-    }
+  public CourseAssignmentResponse get(UUID id) {
+    return toResponse(courseAssignmentMapper.toModel(findOrThrow(id)));
+  }
 
-    private CourseAssignmentResponse toResponse(CourseAssignment a) {
-        return new CourseAssignmentResponse(
-                a.id(), a.course().id(), a.teacher().id(), a.group().id(), a.academicYear());
+  @Transactional
+  public void delete(UUID id) {
+    findOrThrow(id);
+    if (!examRepository.findByAssignmentId(id).isEmpty()) {
+      throw new IllegalStateException("Assignment still has exams attached");
     }
+    courseAssignmentRepository.deleteById(id);
+  }
+
+  private JCourseAssignment findOrThrow(UUID id) {
+    return courseAssignmentRepository
+        .findById(id)
+        .orElseThrow(() -> new NoSuchElementException("Course assignment not found"));
+  }
+
+  private CourseAssignmentResponse toResponse(CourseAssignment a) {
+    return new CourseAssignmentResponse(
+        a.id(), a.course().id(), a.teacher().id(), a.group().id(), a.academicYear());
+  }
 }
