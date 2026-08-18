@@ -3,6 +3,7 @@ package mg.school.hei.exception;
 import java.time.Instant;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -24,6 +25,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(IllegalStateException.class)
   public ResponseEntity<Object> handleConflict(IllegalStateException e) {
     return build(HttpStatus.CONFLICT, e.getMessage());
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<Object> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+    return build(
+        HttpStatus.CONFLICT, "This operation violates a uniqueness or referential constraint");
   }
 
   private ResponseEntity<Object> build(HttpStatus status, String message) {
