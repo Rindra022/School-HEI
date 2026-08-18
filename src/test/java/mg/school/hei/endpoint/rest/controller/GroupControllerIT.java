@@ -3,16 +3,18 @@ package mg.school.hei.endpoint.rest.controller;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
+import java.time.Instant;
 import java.util.UUID;
 import mg.school.hei.conf.FacadeIT;
 import mg.school.hei.conf.RestTemplateTestConfig;
-import mg.school.hei.endpoint.rest.controller.dto.*;
+import mg.school.hei.endpoint.rest.controller.dto.GroupRequest;
+import mg.school.hei.endpoint.rest.controller.dto.GroupResponse;
 import mg.school.hei.model.Track;
+import mg.school.hei.model.UserRole;
 import mg.school.hei.repository.AppGroupRepository;
 import mg.school.hei.repository.AppUserRepository;
-import mg.school.hei.repository.PromotionRepository;
-import mg.school.hei.repository.StudentRepository;
-import mg.school.hei.repository.model.JPromotion;
+import mg.school.hei.repository.model.JAppUser;
+import mg.school.hei.security.jwt.JwtService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,34 +33,44 @@ class GroupControllerIT extends FacadeIT {
   @Autowired private TestRestTemplate restTemplate;
   @Autowired private AppGroupRepository appGroupRepository;
   @Autowired private AppUserRepository appUserRepository;
-  @Autowired private PromotionRepository promotionRepository;
-  @Autowired private StudentRepository studentRepository;
+  @Autowired private JwtService jwtService;
 
-  private HttpHeaders authHeaders;
+  private HttpHeaders adminHeaders;
+  private HttpHeaders studentHeaders;
 
   @BeforeEach
   void setUp() {
-    var promotion =
-        promotionRepository.save(
-            JPromotion.builder().year(2024 + (int) (Math.random() * 1000)).build());
-    String email = "group-auth-" + UUID.randomUUID() + "@example.com";
-    restTemplate.postForEntity(
-        "/register",
-        new RegisterRequest("Grp", "Tester", null, email, "password123", null, promotion.getId()),
-        Void.class);
-    var login =
-        restTemplate.postForEntity(
-            "/login", new LoginRequest(email, "password123"), AuthResponse.class);
-    authHeaders = new HttpHeaders();
-    authHeaders.setBearerAuth(login.getBody().token());
+    var admin =
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Admin")
+                .lastName("Group")
+                .email("group-admin-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.ADMIN)
+                .createdAt(Instant.now())
+                .build());
+    adminHeaders = new HttpHeaders();
+    adminHeaders.setBearerAuth(jwtService.generateToken(admin.getId(), admin.getRole()));
+
+    var student =
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Student")
+                .lastName("Group")
+                .email("group-student-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.STUDENT)
+                .createdAt(Instant.now())
+                .build());
+    studentHeaders = new HttpHeaders();
+    studentHeaders.setBearerAuth(jwtService.generateToken(student.getId(), student.getRole()));
   }
 
   @AfterEach
   void tearDown() {
     appGroupRepository.deleteAll();
-    studentRepository.deleteAll();
     appUserRepository.deleteAll();
-    promotionRepository.deleteAll();
   }
 
   @Test
@@ -68,12 +80,20 @@ class GroupControllerIT extends FacadeIT {
   }
 
   @Test
-  void creating_a_group_should_return_201() {
+  void listing_groups_as_student_should_return_200() {
+    var response =
+        restTemplate.exchange(
+            "/groups", HttpMethod.GET, new HttpEntity<>(studentHeaders), GroupResponse[].class);
+    assertEquals(200, response.getStatusCode().value());
+  }
+
+  @Test
+  void creating_a_group_as_admin_should_return_201() {
     var response =
         restTemplate.exchange(
             "/groups",
             HttpMethod.POST,
-            new HttpEntity<>(new GroupRequest("K1", Track.EL), authHeaders),
+            new HttpEntity<>(new GroupRequest("K1", Track.EL), adminHeaders),
             GroupResponse.class);
 
     assertEquals(201, response.getStatusCode().value());
@@ -81,31 +101,62 @@ class GroupControllerIT extends FacadeIT {
   }
 
   @Test
-  void deleting_an_unreferenced_group_should_return_204() {
+  void creating_a_group_as_student_should_return_403() {
+    var response =
+        restTemplate.exchange(
+            "/groups",
+            HttpMethod.POST,
+            new HttpEntity<>(new GroupRequest("K9", Track.TN), studentHeaders),
+            Object.class);
+
+    assertEquals(403, response.getStatusCode().value());
+  }
+
+  @Test
+  void deleting_an_unreferenced_group_as_admin_should_return_204() {
     var created =
         restTemplate.exchange(
             "/groups",
             HttpMethod.POST,
-            new HttpEntity<>(new GroupRequest("K2", Track.TN), authHeaders),
+            new HttpEntity<>(new GroupRequest("K2", Track.TN), adminHeaders),
             GroupResponse.class);
 
     var response =
         restTemplate.exchange(
             "/groups/" + created.getBody().id(),
             HttpMethod.DELETE,
-            new HttpEntity<>(authHeaders),
+            new HttpEntity<>(adminHeaders),
             Void.class);
 
     assertEquals(204, response.getStatusCode().value());
   }
 
   @Test
-  void getting_an_unknown_group_should_return_404() {
+  void deleting_a_group_as_student_should_return_403() {
+    var created =
+        restTemplate.exchange(
+            "/groups",
+            HttpMethod.POST,
+            new HttpEntity<>(new GroupRequest("K3", Track.TN), adminHeaders),
+            GroupResponse.class);
+
+    var response =
+        restTemplate.exchange(
+            "/groups/" + created.getBody().id(),
+            HttpMethod.DELETE,
+            new HttpEntity<>(studentHeaders),
+            Object.class);
+
+    assertEquals(403, response.getStatusCode().value());
+  }
+
+  @Test
+  void getting_an_unknown_group_as_admin_should_return_404() {
     var response =
         restTemplate.exchange(
             "/groups/" + UUID.randomUUID(),
             HttpMethod.GET,
-            new HttpEntity<>(authHeaders),
+            new HttpEntity<>(adminHeaders),
             Object.class);
     assertEquals(404, response.getStatusCode().value());
   }

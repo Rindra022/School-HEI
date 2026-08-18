@@ -9,6 +9,7 @@ import mg.school.hei.endpoint.rest.controller.dto.GroupResponse;
 import mg.school.hei.service.GroupService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,6 +23,7 @@ public class GroupController {
   }
 
   @PostMapping("/groups")
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<GroupResponse> create(@Valid @RequestBody GroupRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(groupService.create(request));
   }
@@ -32,11 +34,13 @@ public class GroupController {
   }
 
   @PatchMapping("/groups/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
   public GroupResponse update(@PathVariable UUID id, @Valid @RequestBody GroupRequest request) {
     return groupService.update(id, request);
   }
 
   @DeleteMapping("/groups/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<Void> delete(@PathVariable UUID id) {
     groupService.delete(id);
     return ResponseEntity.noContent().build();
