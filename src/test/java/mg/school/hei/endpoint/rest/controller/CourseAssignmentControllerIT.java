@@ -4,14 +4,17 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import mg.school.hei.conf.FacadeIT;
 import mg.school.hei.conf.RestTemplateTestConfig;
-import mg.school.hei.endpoint.rest.controller.dto.*;
+import mg.school.hei.endpoint.rest.controller.dto.CourseAssignmentRequest;
+import mg.school.hei.endpoint.rest.controller.dto.CourseAssignmentResponse;
 import mg.school.hei.model.Track;
 import mg.school.hei.model.UserRole;
 import mg.school.hei.repository.*;
 import mg.school.hei.repository.model.*;
+import mg.school.hei.security.jwt.JwtService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,33 +31,45 @@ import org.springframework.http.HttpMethod;
 class CourseAssignmentControllerIT extends FacadeIT {
 
   @Autowired private TestRestTemplate restTemplate;
-  @Autowired private PromotionRepository promotionRepository;
   @Autowired private AppUserRepository appUserRepository;
   @Autowired private AppGroupRepository appGroupRepository;
   @Autowired private CourseRepository courseRepository;
   @Autowired private CourseAssignmentRepository courseAssignmentRepository;
-  @Autowired private StudentRepository studentRepository;
+  @Autowired private JwtService jwtService;
 
-  private HttpHeaders authHeaders;
+  private HttpHeaders adminHeaders;
+  private HttpHeaders studentHeaders;
   private UUID courseId;
   private UUID teacherId;
   private UUID groupId;
 
   @BeforeEach
   void setUp() {
-    var promotion =
-        promotionRepository.save(
-            JPromotion.builder().year(2024 + (int) (Math.random() * 1000)).build());
-    String email = "ca-auth-" + UUID.randomUUID() + "@example.com";
-    restTemplate.postForEntity(
-        "/register",
-        new RegisterRequest("CA", "Tester", null, email, "password123", null, promotion.getId()),
-        Void.class);
-    var login =
-        restTemplate.postForEntity(
-            "/login", new LoginRequest(email, "password123"), AuthResponse.class);
-    authHeaders = new HttpHeaders();
-    authHeaders.setBearerAuth(login.getBody().token());
+    var admin =
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Admin")
+                .lastName("Assign")
+                .email("ca-admin-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.ADMIN)
+                .createdAt(Instant.now())
+                .build());
+    adminHeaders = new HttpHeaders();
+    adminHeaders.setBearerAuth(jwtService.generateToken(admin.getId(), admin.getRole()));
+
+    var student =
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Student")
+                .lastName("Assign")
+                .email("ca-student-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.STUDENT)
+                .createdAt(Instant.now())
+                .build());
+    studentHeaders = new HttpHeaders();
+    studentHeaders.setBearerAuth(jwtService.generateToken(student.getId(), student.getRole()));
 
     teacherId =
         appUserRepository
@@ -70,17 +85,13 @@ class CourseAssignmentControllerIT extends FacadeIT {
             .getId();
     groupId =
         appGroupRepository
-            .save(
-                JAppGroup.builder()
-                    .ref("K1-" + UUID.randomUUID().toString().substring(0, 8))
-                    .track(Track.EL)
-                    .build())
+            .save(JAppGroup.builder().ref("K1-" + UUID.randomUUID()).track(Track.EL).build())
             .getId();
     courseId =
         courseRepository
             .save(
                 JCourse.builder()
-                    .ref("PROG-" + UUID.randomUUID().toString().substring(0, 8))
+                    .ref("PROG4-" + UUID.randomUUID())
                     .title("Qualite")
                     .credits(6)
                     .build())
@@ -92,33 +103,37 @@ class CourseAssignmentControllerIT extends FacadeIT {
     courseAssignmentRepository.deleteAll();
     courseRepository.deleteAll();
     appGroupRepository.deleteAll();
-    studentRepository.deleteAll();
     appUserRepository.deleteAll();
-    promotionRepository.deleteAll();
   }
 
   @Test
-  void creating_an_assignment_should_return_201() {
-    var response = createAssignmentRaw(2024);
+  void creating_an_assignment_as_admin_should_return_201() {
+    var response = createAssignmentRaw(2024, adminHeaders);
     assertEquals(201, response.getStatusCode().value());
   }
 
   @Test
+  void creating_an_assignment_as_student_should_return_403() {
+    var response = createAssignmentRaw(2024, studentHeaders);
+    assertEquals(403, response.getStatusCode().value());
+  }
+
+  @Test
   void creating_a_duplicate_assignment_should_return_400() {
-    createAssignmentRaw(2024);
-    var response = createAssignmentRaw(2024);
+    createAssignmentRaw(2024, adminHeaders);
+    var response = createAssignmentRaw(2024, adminHeaders);
     assertEquals(400, response.getStatusCode().value());
   }
 
   @Test
   void listing_assignments_filtered_by_year_should_return_only_matching_ones() {
-    createAssignmentRaw(2024);
+    createAssignmentRaw(2024, adminHeaders);
 
     var response =
         restTemplate.exchange(
             "/course-assignments?academicYear=2025",
             HttpMethod.GET,
-            new HttpEntity<>(authHeaders),
+            new HttpEntity<>(adminHeaders),
             CourseAssignmentResponse[].class);
 
     assertEquals(200, response.getStatusCode().value());
@@ -126,26 +141,39 @@ class CourseAssignmentControllerIT extends FacadeIT {
   }
 
   @Test
-  void deleting_an_assignment_without_exams_should_return_204() {
-    var created = createAssignmentRaw(2026);
-    var id = ((java.util.Map<?, ?>) created.getBody()).get("id");
+  void deleting_an_assignment_without_exams_as_admin_should_return_204() {
+    var created = createAssignmentRaw(2026, adminHeaders);
+    var id = ((Map<?, ?>) created.getBody()).get("id");
 
     var response =
         restTemplate.exchange(
             "/course-assignments/" + id,
             HttpMethod.DELETE,
-            new HttpEntity<>(authHeaders),
+            new HttpEntity<>(adminHeaders),
             Void.class);
 
     assertEquals(204, response.getStatusCode().value());
   }
 
-  private org.springframework.http.ResponseEntity<Object> createAssignmentRaw(int academicYear) {
+  @Test
+  void deleting_an_assignment_as_student_should_return_403() {
+    var created = createAssignmentRaw(2027, adminHeaders);
+    var id = ((Map<?, ?>) created.getBody()).get("id");
+
+    var response =
+        restTemplate.exchange(
+            "/course-assignments/" + id,
+            HttpMethod.DELETE,
+            new HttpEntity<>(studentHeaders),
+            Object.class);
+
+    assertEquals(403, response.getStatusCode().value());
+  }
+
+  private org.springframework.http.ResponseEntity<Object> createAssignmentRaw(
+      int academicYear, HttpHeaders headers) {
     var request = new CourseAssignmentRequest(courseId, teacherId, groupId, academicYear);
     return restTemplate.exchange(
-        "/course-assignments",
-        HttpMethod.POST,
-        new HttpEntity<>(request, authHeaders),
-        Object.class);
+        "/course-assignments", HttpMethod.POST, new HttpEntity<>(request, headers), Object.class);
   }
 }

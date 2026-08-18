@@ -9,6 +9,7 @@ import mg.school.hei.endpoint.rest.controller.dto.CourseAssignmentResponse;
 import mg.school.hei.service.CourseAssignmentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,6 +23,7 @@ public class CourseAssignmentController {
   }
 
   @PostMapping("/course-assignments")
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<CourseAssignmentResponse> create(
       @Valid @RequestBody CourseAssignmentRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(courseAssignmentService.create(request));
@@ -33,6 +35,7 @@ public class CourseAssignmentController {
   }
 
   @DeleteMapping("/course-assignments/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<Void> delete(@PathVariable UUID id) {
     courseAssignmentService.delete(id);
     return ResponseEntity.noContent().build();
