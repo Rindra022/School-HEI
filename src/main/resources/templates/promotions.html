@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>HEI - Diplômés par promotion</title>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; }
+        table { border-collapse: collapse; width: 100%; max-width: 600px; }
+        th, td { border: 1px solid #ccc; padding: 0.5rem 1rem; text-align: left; }
+        #login-box { margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; max-width: 320px; }
+        #login-box input { display: block; margin-bottom: 0.5rem; width: 100%; box-sizing: border-box; }
+        #status { margin-top: 0.5rem; font-weight: bold; }
+        button { cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<h1>Promotions HEI</h1>
+
+<div id="login-box">
+    <h2>Connexion ADMIN</h2>
+    <input type="email" id="email" placeholder="Email"/>
+    <input type="password" id="password" placeholder="Mot de passe"/>
+    <button type="button" onclick="login()">Se connecter</button>
+    <div id="status">Non connecté</div>
+</div>
+
+<table>
+    <thead>
+    <tr>
+        <th>Année</th>
+        <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="promotion : ${promotions}">
+        <td th:text="${promotion.year}">2024</td>
+        <td>
+            <button type="button" class="download-btn" th:attr="data-id=${promotion.id}">
+                Télécharger la liste des diplômés
+            </button>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+<script>
+    let authToken = null;
+
+    async function login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const statusEl = document.getElementById('status');
+
+        try {
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email: email, password: password})
+            });
+
+            if (!response.ok) {
+                statusEl.textContent = 'Échec de la connexion';
+                authToken = null;
+                return;
+            }
+
+            const data = await response.json();
+            authToken = data.token;
+            statusEl.textContent = 'Connecté';
+        } catch (e) {
+            statusEl.textContent = 'Erreur de connexion';
+            authToken = null;
+        }
+    }
+
+    function downloadGraduates(promotionId) {
+        if (!authToken) {
+            alert("Veuillez vous connecter en tant qu'ADMIN avant de télécharger.");
+            return;
+        }
+        window.location.href =
+            '/promotions/' + promotionId + '/graduates/export?access_token=' + encodeURIComponent(authToken);
+    }
+
+    document.querySelectorAll('.download-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            downloadGraduates(this.getAttribute('data-id'));
+        });
+    });
+</script>
+
+</body>
+</html>
