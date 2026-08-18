@@ -18,6 +18,7 @@ public class GroupController {
   private final GroupService groupService;
 
   @GetMapping("/groups")
+  @PreAuthorize("hasAnyRole('ADMIN', 'TEACHER')")
   public List<GroupResponse> list() {
     return groupService.list();
   }
