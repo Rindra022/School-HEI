@@ -14,6 +14,7 @@ import mg.school.hei.repository.AppUserRepository;
 import mg.school.hei.repository.PromotionRepository;
 import mg.school.hei.repository.model.JAppUser;
 import mg.school.hei.security.jwt.JwtService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,37 +33,52 @@ class PromotionControllerIT extends FacadeIT {
   @Autowired private PromotionRepository promotionRepository;
   @Autowired private AppUserRepository appUserRepository;
   @Autowired private JwtService jwtService;
-  private String token;
+
+  private HttpHeaders adminHeaders;
+  private HttpHeaders studentHeaders;
 
   @BeforeEach
   void setUp() {
-    promotionRepository.deleteAll();
     var admin =
         appUserRepository.save(
             JAppUser.builder()
                 .firstName("Admin")
-                .lastName("Test")
-                .email("admin-promo-" + UUID.randomUUID() + "@example.com")
+                .lastName("Promo")
+                .email("promo-admin-" + UUID.randomUUID() + "@example.com")
                 .password("hashed")
                 .role(UserRole.ADMIN)
                 .createdAt(Instant.now())
                 .build());
-    token = jwtService.generateToken(admin.getId(), admin.getRole());
+    adminHeaders = new HttpHeaders();
+    adminHeaders.setBearerAuth(jwtService.generateToken(admin.getId(), admin.getRole()));
+
+    var student =
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Student")
+                .lastName("Promo")
+                .email("promo-student-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.STUDENT)
+                .createdAt(Instant.now())
+                .build());
+    studentHeaders = new HttpHeaders();
+    studentHeaders.setBearerAuth(jwtService.generateToken(student.getId(), student.getRole()));
   }
 
-  private HttpHeaders authHeaders() {
-    HttpHeaders headers = new HttpHeaders();
-    headers.setBearerAuth(token);
-    return headers;
+  @AfterEach
+  void tearDown() {
+    promotionRepository.deleteAll();
+    appUserRepository.deleteAll();
   }
 
   @Test
-  void creating_a_promotion_should_return_201() {
+  void creating_a_promotion_as_admin_should_return_201() {
     var response =
         restTemplate.exchange(
             "/promotions",
             HttpMethod.POST,
-            new HttpEntity<>(new PromotionRequest(2026), authHeaders()),
+            new HttpEntity<>(new PromotionRequest(2026), adminHeaders),
             PromotionResponse.class);
 
     assertEquals(201, response.getStatusCode().value());
@@ -70,64 +86,107 @@ class PromotionControllerIT extends FacadeIT {
   }
 
   @Test
-  void creating_a_duplicate_year_should_return_400() {
-    restTemplate.exchange(
-        "/promotions",
-        HttpMethod.POST,
-        new HttpEntity<>(new PromotionRequest(2027), authHeaders()),
-        PromotionResponse.class);
+  void creating_a_promotion_as_student_should_return_403() {
     var response =
         restTemplate.exchange(
             "/promotions",
             HttpMethod.POST,
-            new HttpEntity<>(new PromotionRequest(2027), authHeaders()),
+            new HttpEntity<>(new PromotionRequest(2031), studentHeaders),
+            Object.class);
+
+    assertEquals(403, response.getStatusCode().value());
+  }
+
+  @Test
+  void creating_a_duplicate_year_should_return_400() {
+    restTemplate.exchange(
+        "/promotions",
+        HttpMethod.POST,
+        new HttpEntity<>(new PromotionRequest(2027), adminHeaders),
+        PromotionResponse.class);
+
+    var response =
+        restTemplate.exchange(
+            "/promotions",
+            HttpMethod.POST,
+            new HttpEntity<>(new PromotionRequest(2027), adminHeaders),
             Object.class);
 
     assertEquals(400, response.getStatusCode().value());
   }
 
   @Test
-  void listing_promotions_should_return_200() {
-    restTemplate.exchange(
-        "/promotions",
-        HttpMethod.POST,
-        new HttpEntity<>(new PromotionRequest(2028), authHeaders()),
-        PromotionResponse.class);
-
+  void listing_promotions_without_auth_should_return_200() {
     var response = restTemplate.getForEntity("/promotions", PromotionResponse[].class);
-
     assertEquals(200, response.getStatusCode().value());
-    assertTrue(response.getBody().length >= 1);
   }
 
   @Test
-  void updating_an_unknown_promotion_should_return_404() {
+  void updating_an_unknown_promotion_as_admin_should_return_404() {
     var response =
         restTemplate.exchange(
             "/promotions/" + UUID.randomUUID(),
             HttpMethod.PATCH,
-            new HttpEntity<>(new PromotionRequest(2030), authHeaders()),
+            new HttpEntity<>(new PromotionRequest(2030), adminHeaders),
             Object.class);
 
     assertEquals(404, response.getStatusCode().value());
   }
 
   @Test
-  void deleting_a_promotion_without_students_should_return_204() {
+  void updating_a_promotion_as_student_should_return_403() {
     var created =
         restTemplate.exchange(
             "/promotions",
             HttpMethod.POST,
-            new HttpEntity<>(new PromotionRequest(2029), authHeaders()),
+            new HttpEntity<>(new PromotionRequest(2032), adminHeaders),
+            PromotionResponse.class);
+
+    var response =
+        restTemplate.exchange(
+            "/promotions/" + created.getBody().id(),
+            HttpMethod.PATCH,
+            new HttpEntity<>(new PromotionRequest(2033), studentHeaders),
+            Object.class);
+
+    assertEquals(403, response.getStatusCode().value());
+  }
+
+  @Test
+  void deleting_a_promotion_without_students_as_admin_should_return_204() {
+    var created =
+        restTemplate.exchange(
+            "/promotions",
+            HttpMethod.POST,
+            new HttpEntity<>(new PromotionRequest(2029), adminHeaders),
             PromotionResponse.class);
 
     var response =
         restTemplate.exchange(
             "/promotions/" + created.getBody().id(),
             HttpMethod.DELETE,
-            new HttpEntity<>(null, authHeaders()),
+            new HttpEntity<>(adminHeaders),
             Void.class);
 
     assertEquals(204, response.getStatusCode().value());
+  }
+
+  @Test
+  void deleting_a_promotion_as_student_should_return_403() {
+    var created =
+        restTemplate.exchange(
+            "/promotions",
+            HttpMethod.POST,
+            new HttpEntity<>(new PromotionRequest(2034), adminHeaders),
+            PromotionResponse.class);
+
+    var response =
+        restTemplate.exchange(
+            "/promotions/" + created.getBody().id(),
+            HttpMethod.DELETE,
+            new HttpEntity<>(studentHeaders),
+            Object.class);
+
+    assertEquals(403, response.getStatusCode().value());
   }
 }

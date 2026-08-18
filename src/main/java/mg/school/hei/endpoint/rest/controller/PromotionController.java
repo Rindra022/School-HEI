@@ -9,6 +9,7 @@ import mg.school.hei.endpoint.rest.controller.dto.PromotionResponse;
 import mg.school.hei.service.PromotionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,6 +23,7 @@ public class PromotionController {
   }
 
   @PostMapping("/promotions")
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<PromotionResponse> create(@Valid @RequestBody PromotionRequest request) {
     return ResponseEntity.status(HttpStatus.CREATED).body(promotionService.create(request));
   }
@@ -32,12 +34,14 @@ public class PromotionController {
   }
 
   @PatchMapping("/promotions/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
   public PromotionResponse update(
       @PathVariable UUID id, @Valid @RequestBody PromotionRequest request) {
     return promotionService.update(id, request);
   }
 
   @DeleteMapping("/promotions/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<Void> delete(@PathVariable UUID id) {
     promotionService.delete(id);
     return ResponseEntity.noContent().build();
