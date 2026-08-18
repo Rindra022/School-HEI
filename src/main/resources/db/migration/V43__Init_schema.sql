@@ -28,7 +28,7 @@ CREATE TABLE student (
 
 CREATE TABLE app_group (
                            id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                           ref    VARCHAR(20) NOT NULL,
+                           ref    VARCHAR(100) NOT NULL,
                            track  VARCHAR(20) NOT NULL CHECK (track IN ('EL', 'TN', 'COMMUN'))
 );
 
@@ -46,7 +46,7 @@ CREATE INDEX idx_membership_group   ON group_membership(group_id);
 
 CREATE TABLE course (
                         id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                        ref      VARCHAR(20) NOT NULL UNIQUE,
+                        ref      VARCHAR(100) NOT NULL UNIQUE,
                         title    VARCHAR(255) NOT NULL,
                         credits  INT NOT NULL CHECK (credits > 0)
 );
