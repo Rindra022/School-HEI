@@ -270,6 +270,24 @@ class GraduateExportControllerIT extends FacadeIT {
     assertEquals(404, response.getStatusCode().value());
   }
 
+  @Test
+  void export_via_access_token_query_param_should_return_302_like_the_download_button_does() {
+    var noRedirectTemplate = createNoRedirectRestTemplate();
+    String rawToken =
+        adminHeaders.getFirst(org.springframework.http.HttpHeaders.AUTHORIZATION).substring(7);
+    String url =
+        restTemplate.getRootUri()
+            + "/promotions/"
+            + promotionId
+            + "/graduates/export?access_token="
+            + rawToken;
+
+    var response = noRedirectTemplate.exchange(url, HttpMethod.GET, HttpEntity.EMPTY, Void.class);
+
+    assertEquals(302, response.getStatusCode().value());
+    assertNotNull(response.getHeaders().getLocation());
+  }
+
   private RestTemplate createNoRedirectRestTemplate() {
     var factory =
         new HttpComponentsClientHttpRequestFactory(
