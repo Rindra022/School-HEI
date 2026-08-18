@@ -8,10 +8,14 @@ import mg.school.hei.endpoint.rest.controller.dto.GroupMembershipRequest;
 import mg.school.hei.endpoint.rest.controller.dto.GroupMembershipResponse;
 import mg.school.hei.mapper.GroupMembershipMapper;
 import mg.school.hei.model.GroupMembership;
+import mg.school.hei.model.UserRole;
 import mg.school.hei.repository.AppGroupRepository;
 import mg.school.hei.repository.GroupMembershipRepository;
 import mg.school.hei.repository.StudentRepository;
 import mg.school.hei.repository.model.JGroupMembership;
+import mg.school.hei.security.model.Principal;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -76,6 +80,14 @@ public class GroupMembershipService {
         groupMembershipRepository
             .findById(id)
             .orElseThrow(() -> new NoSuchElementException("Membership not found"));
+
+    Principal principal =
+        (Principal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    if (principal.role() == UserRole.STUDENT
+        && !entity.getStudent().getId().equals(principal.userId())) {
+      throw new AccessDeniedException("You can only view your own group memberships");
+    }
+
     return toResponse(groupMembershipMapper.toModel(entity));
   }
 

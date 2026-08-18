@@ -18,6 +18,7 @@ public class GroupMembershipController {
   private final GroupMembershipService groupMembershipService;
 
   @GetMapping("/group-memberships")
+  @PreAuthorize("hasRole('ADMIN') or #studentId == authentication.principal.userId()")
   public List<GroupMembershipResponse> list(@RequestParam UUID studentId) {
     return groupMembershipService.listByStudent(studentId);
   }
