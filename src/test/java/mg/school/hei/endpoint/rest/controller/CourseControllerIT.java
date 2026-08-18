@@ -14,6 +14,7 @@ import mg.school.hei.repository.AppUserRepository;
 import mg.school.hei.repository.CourseRepository;
 import mg.school.hei.repository.model.JAppUser;
 import mg.school.hei.security.jwt.JwtService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,41 +33,53 @@ class CourseControllerIT extends FacadeIT {
   @Autowired private CourseRepository courseRepository;
   @Autowired private AppUserRepository appUserRepository;
   @Autowired private JwtService jwtService;
-  private String token;
+
+  private HttpHeaders adminHeaders;
+  private HttpHeaders studentHeaders;
 
   @BeforeEach
   void setUp() {
-    courseRepository.deleteAll();
     var admin =
         appUserRepository.save(
             JAppUser.builder()
                 .firstName("Admin")
                 .lastName("Course")
-                .email("admin-course-" + UUID.randomUUID() + "@example.com")
+                .email("course-admin-" + UUID.randomUUID() + "@example.com")
                 .password("hashed")
                 .role(UserRole.ADMIN)
                 .createdAt(Instant.now())
                 .build());
-    token = jwtService.generateToken(admin.getId(), admin.getRole());
+    adminHeaders = new HttpHeaders();
+    adminHeaders.setBearerAuth(jwtService.generateToken(admin.getId(), admin.getRole()));
+
+    var student =
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Student")
+                .lastName("Course")
+                .email("course-student-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.STUDENT)
+                .createdAt(Instant.now())
+                .build());
+    studentHeaders = new HttpHeaders();
+    studentHeaders.setBearerAuth(jwtService.generateToken(student.getId(), student.getRole()));
   }
 
-  private HttpHeaders authHeaders() {
-    HttpHeaders headers = new HttpHeaders();
-    headers.setBearerAuth(token);
-    return headers;
-  }
-
-  private static String shortRef(String prefix) {
-    return prefix + "-" + UUID.randomUUID().toString().substring(0, 8);
+  @AfterEach
+  void tearDown() {
+    courseRepository.deleteAll();
+    appUserRepository.deleteAll();
   }
 
   @Test
-  void creating_a_course_should_return_201() {
+  void creating_a_course_as_admin_should_return_201() {
     var response =
         restTemplate.exchange(
             "/courses",
             HttpMethod.POST,
-            new HttpEntity<>(new CourseRequest(shortRef("PROG4"), "Qualite", 6), authHeaders()),
+            new HttpEntity<>(
+                new CourseRequest("PROG4-" + UUID.randomUUID(), "Qualite", 6), adminHeaders),
             CourseResponse.class);
 
     assertEquals(201, response.getStatusCode().value());
@@ -74,62 +87,97 @@ class CourseControllerIT extends FacadeIT {
   }
 
   @Test
-  void creating_a_duplicate_ref_should_return_409() {
-    String ref = shortRef("DUP");
-    restTemplate.exchange(
-        "/courses",
-        HttpMethod.POST,
-        new HttpEntity<>(new CourseRequest(ref, "Qualite", 6), authHeaders()),
-        CourseResponse.class);
+  void creating_a_course_as_student_should_return_403() {
     var response =
         restTemplate.exchange(
             "/courses",
             HttpMethod.POST,
-            new HttpEntity<>(new CourseRequest(ref, "Qualite", 6), authHeaders()),
+            new HttpEntity<>(
+                new CourseRequest("PROG5-" + UUID.randomUUID(), "Qualite", 6), studentHeaders),
+            Object.class);
+
+    assertEquals(403, response.getStatusCode().value());
+  }
+
+  @Test
+  void creating_a_duplicate_ref_should_return_409() {
+    String ref = "DUP-" + UUID.randomUUID();
+    restTemplate.exchange(
+        "/courses",
+        HttpMethod.POST,
+        new HttpEntity<>(new CourseRequest(ref, "Qualite", 6), adminHeaders),
+        CourseResponse.class);
+
+    var response =
+        restTemplate.exchange(
+            "/courses",
+            HttpMethod.POST,
+            new HttpEntity<>(new CourseRequest(ref, "Qualite", 6), adminHeaders),
             Object.class);
 
     assertEquals(409, response.getStatusCode().value());
   }
 
   @Test
-  void getting_an_unknown_course_should_return_404() {
+  void getting_an_unknown_course_without_auth_should_return_404() {
     var response = restTemplate.getForEntity("/courses/" + UUID.randomUUID(), Object.class);
     assertEquals(404, response.getStatusCode().value());
   }
 
   @Test
-  void deleting_a_course_without_assignments_should_return_204() {
+  void deleting_a_course_without_assignments_as_admin_should_return_204() {
     var created =
         restTemplate.exchange(
             "/courses",
             HttpMethod.POST,
-            new HttpEntity<>(new CourseRequest(shortRef("DEL"), "Qualite", 6), authHeaders()),
+            new HttpEntity<>(
+                new CourseRequest("DEL-" + UUID.randomUUID(), "Qualite", 6), adminHeaders),
             CourseResponse.class);
 
     var response =
         restTemplate.exchange(
             "/courses/" + created.getBody().id(),
             HttpMethod.DELETE,
-            new HttpEntity<>(null, authHeaders()),
+            new HttpEntity<>(adminHeaders),
             Void.class);
 
     assertEquals(204, response.getStatusCode().value());
   }
 
   @Test
-  void updating_a_course_should_return_the_new_values() {
+  void deleting_a_course_as_student_should_return_403() {
     var created =
         restTemplate.exchange(
             "/courses",
             HttpMethod.POST,
-            new HttpEntity<>(new CourseRequest(shortRef("UPD"), "Old", 3), authHeaders()),
+            new HttpEntity<>(
+                new CourseRequest("DEL2-" + UUID.randomUUID(), "Qualite", 6), adminHeaders),
+            CourseResponse.class);
+
+    var response =
+        restTemplate.exchange(
+            "/courses/" + created.getBody().id(),
+            HttpMethod.DELETE,
+            new HttpEntity<>(studentHeaders),
+            Object.class);
+
+    assertEquals(403, response.getStatusCode().value());
+  }
+
+  @Test
+  void updating_a_course_as_admin_should_return_the_new_values() {
+    var created =
+        restTemplate.exchange(
+            "/courses",
+            HttpMethod.POST,
+            new HttpEntity<>(new CourseRequest("UPD-" + UUID.randomUUID(), "Old", 3), adminHeaders),
             CourseResponse.class);
 
     var response =
         restTemplate.exchange(
             "/courses/" + created.getBody().id(),
             HttpMethod.PATCH,
-            new HttpEntity<>(new CourseRequest(shortRef("UPD"), "New title", 5), authHeaders()),
+            new HttpEntity<>(new CourseRequest("UPD-NEW", "New title", 5), adminHeaders),
             CourseResponse.class);
 
     assertEquals(200, response.getStatusCode().value());
