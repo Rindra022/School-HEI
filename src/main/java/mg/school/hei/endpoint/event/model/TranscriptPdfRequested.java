@@ -24,6 +24,9 @@ public class TranscriptPdfRequested extends PojaEvent {
   @JsonProperty("recipientEmail")
   private String recipientEmail;
 
+  @JsonProperty("academicYear")
+  private Integer academicYear;
+
   @Override
   public Duration maxConsumerDuration() {
     return Duration.ofSeconds(60);

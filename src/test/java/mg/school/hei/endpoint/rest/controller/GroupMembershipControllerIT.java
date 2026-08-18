@@ -154,4 +154,49 @@ class GroupMembershipControllerIT extends FacadeIT {
             GroupMembershipResponse.class);
     assertEquals(201, response.getStatusCode().value());
   }
+
+  @Test
+  void student_listing_another_students_memberships_should_return_403() {
+    post(new GroupMembershipRequest(studentId, groupAId, LocalDate.of(2024, 9, 1)));
+
+    var otherStudentUser =
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Other")
+                .lastName("Student")
+                .email("gm-other-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.STUDENT)
+                .createdAt(Instant.now())
+                .build());
+    var otherStudentHeaders = new HttpHeaders();
+    otherStudentHeaders.setBearerAuth(
+        jwtService.generateToken(otherStudentUser.getId(), UserRole.STUDENT));
+
+    var response =
+        restTemplate.exchange(
+            "/group-memberships?studentId=" + studentId,
+            HttpMethod.GET,
+            new HttpEntity<>(otherStudentHeaders),
+            Object.class);
+
+    assertEquals(403, response.getStatusCode().value());
+  }
+
+  @Test
+  void student_viewing_own_memberships_should_return_200() {
+    post(new GroupMembershipRequest(studentId, groupAId, LocalDate.of(2024, 9, 1)));
+    var ownStudentHeaders = new HttpHeaders();
+    ownStudentHeaders.setBearerAuth(jwtService.generateToken(studentId, UserRole.STUDENT));
+
+    var response =
+        restTemplate.exchange(
+            "/group-memberships?studentId=" + studentId,
+            HttpMethod.GET,
+            new HttpEntity<>(ownStudentHeaders),
+            GroupMembershipResponse[].class);
+
+    assertEquals(200, response.getStatusCode().value());
+    assertEquals(1, response.getBody().length);
+  }
 }

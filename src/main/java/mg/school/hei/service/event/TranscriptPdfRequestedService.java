@@ -43,20 +43,34 @@ public class TranscriptPdfRequestedService implements Consumer<TranscriptPdfRequ
   @SneakyThrows
   public void accept(TranscriptPdfRequested event) {
     UUID studentId = UUID.fromString(event.getStudentId());
-    FullTranscriptResponse transcript = transcriptService.getFullTranscript(studentId);
+    Integer academicYear = event.getAcademicYear();
 
-    File pdfFile = generatePdf(transcript);
+    String std;
+    File pdfFile;
+    if (academicYear != null) {
+      TranscriptResponse yearTranscript = transcriptService.getTranscript(studentId, academicYear);
+      std = yearTranscript.std();
+      pdfFile = generateSingleYearPdf(yearTranscript);
+    } else {
+      FullTranscriptResponse transcript = transcriptService.getFullTranscript(studentId);
+      std = transcript.std();
+      pdfFile = generateFullPdf(transcript);
+    }
+
     String bucketKey = "transcripts/" + studentId + "/" + UUID.randomUUID() + ".pdf";
     bucketComponent.upload(pdfFile, bucketKey);
 
     var downloadUrl = bucketComponent.presign(bucketKey, LINK_EXPIRATION);
-    sendEmail(event.getRecipientEmail(), transcript, downloadUrl.toString());
+    sendEmail(event.getRecipientEmail(), std, downloadUrl.toString());
 
-    log.info("Transcript PDF generated and emailed for studentId={}", studentId);
+    log.info(
+        "Transcript PDF generated and emailed for studentId={}, academicYear={}",
+        studentId,
+        academicYear);
   }
 
   @SneakyThrows
-  private File generatePdf(FullTranscriptResponse transcript) {
+  private File generateFullPdf(FullTranscriptResponse transcript) {
     File file = createTempFile("transcript-" + transcript.std(), ".pdf");
     Document document = new Document();
     PdfWriter.getInstance(document, new FileOutputStream(file));
@@ -71,32 +85,7 @@ public class TranscriptPdfRequestedService implements Consumer<TranscriptPdfRequ
     document.add(new Paragraph(" "));
 
     for (TranscriptResponse year : transcript.years()) {
-      document.add(new Paragraph("Academic Year " + year.academicYear(), sectionFont));
-
-      PdfPTable table = new PdfPTable(4);
-      table.setWidthPercentage(100);
-      addHeaderCell(table, "Course");
-      addHeaderCell(table, "Title");
-      addHeaderCell(table, "Average");
-      addHeaderCell(table, "Credits");
-
-      for (TranscriptCourseLine course : year.courses()) {
-        table.addCell(new PdfPCell(new Paragraph(course.courseRef(), normalFont)));
-        table.addCell(new PdfPCell(new Paragraph(course.courseTitle(), normalFont)));
-        table.addCell(
-            new PdfPCell(
-                new Paragraph(
-                    course.average() != null ? String.valueOf(course.average()) : "N/A",
-                    normalFont)));
-        table.addCell(new PdfPCell(new Paragraph(String.valueOf(course.credits()), normalFont)));
-      }
-
-      document.add(table);
-      document.add(
-          new Paragraph(
-              "Year average: " + year.generalAverage() + " | Credits: " + year.totalCredits(),
-              normalFont));
-      document.add(new Paragraph(" "));
+      addYearSection(document, year, sectionFont, normalFont);
     }
 
     document.add(new Paragraph(" "));
@@ -109,17 +98,69 @@ public class TranscriptPdfRequestedService implements Consumer<TranscriptPdfRequ
     return file;
   }
 
+  @SneakyThrows
+  private File generateSingleYearPdf(TranscriptResponse year) {
+    File file = createTempFile("transcript-" + year.std() + "-" + year.academicYear(), ".pdf");
+    Document document = new Document();
+    PdfWriter.getInstance(document, new FileOutputStream(file));
+    document.open();
+
+    Font titleFont = new Font(Font.HELVETICA, 18, Font.BOLD);
+    Font sectionFont = new Font(Font.HELVETICA, 14, Font.BOLD);
+    Font normalFont = new Font(Font.HELVETICA, 11, Font.NORMAL);
+
+    document.add(new Paragraph("Academic Transcript", titleFont));
+    document.add(new Paragraph("Student: " + year.std(), normalFont));
+    document.add(new Paragraph(" "));
+
+    addYearSection(document, year, sectionFont, normalFont);
+
+    document.close();
+    return file;
+  }
+
+  @SneakyThrows
+  private void addYearSection(
+      Document document, TranscriptResponse year, Font sectionFont, Font normalFont) {
+    document.add(new Paragraph("Academic Year " + year.academicYear(), sectionFont));
+
+    PdfPTable table = new PdfPTable(4);
+    table.setWidthPercentage(100);
+    addHeaderCell(table, "Course");
+    addHeaderCell(table, "Title");
+    addHeaderCell(table, "Average");
+    addHeaderCell(table, "Credits");
+
+    for (TranscriptCourseLine course : year.courses()) {
+      table.addCell(new PdfPCell(new Paragraph(course.courseRef(), normalFont)));
+      table.addCell(new PdfPCell(new Paragraph(course.courseTitle(), normalFont)));
+      table.addCell(
+          new PdfPCell(
+              new Paragraph(
+                  course.average() != null ? String.valueOf(course.average()) : "N/A",
+                  normalFont)));
+      table.addCell(new PdfPCell(new Paragraph(String.valueOf(course.credits()), normalFont)));
+    }
+
+    document.add(table);
+    document.add(
+        new Paragraph(
+            "Year average: " + year.generalAverage() + " | Credits: " + year.totalCredits(),
+            normalFont));
+    document.add(new Paragraph(" "));
+  }
+
   private void addHeaderCell(PdfPTable table, String text) {
     PdfPCell cell = new PdfPCell(new Paragraph(text, new Font(Font.HELVETICA, 11, Font.BOLD)));
     table.addCell(cell);
   }
 
   @SneakyThrows
-  private void sendEmail(String recipientEmail, FullTranscriptResponse transcript, String url) {
+  private void sendEmail(String recipientEmail, String std, String url) {
     String html =
         "<p>Hello,</p>"
             + "<p>Your academic transcript (student "
-            + transcript.std()
+            + std
             + ") is ready.</p>"
             + "<p><a href=\""
             + url

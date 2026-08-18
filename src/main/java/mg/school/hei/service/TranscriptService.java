@@ -103,7 +103,7 @@ public class TranscriptService {
         .collect(Collectors.toSet());
   }
 
-  public void requestTranscriptPdf(UUID studentId) {
+  public void requestTranscriptPdf(UUID studentId, Integer academicYear) {
     var user =
         appUserRepository
             .findById(studentId)
@@ -113,6 +113,7 @@ public class TranscriptService {
         TranscriptPdfRequested.builder()
             .studentId(studentId.toString())
             .recipientEmail(user.getEmail())
+            .academicYear(academicYear)
             .build();
 
     eventProducer.accept(List.of(event));
