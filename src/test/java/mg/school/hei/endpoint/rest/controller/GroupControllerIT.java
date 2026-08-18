@@ -42,41 +42,41 @@ class GroupControllerIT extends FacadeIT {
   @BeforeEach
   void setUp() {
     var admin =
-            appUserRepository.save(
-                    JAppUser.builder()
-                            .firstName("Admin")
-                            .lastName("Group")
-                            .email("group-admin-" + UUID.randomUUID() + "@example.com")
-                            .password("hashed")
-                            .role(UserRole.ADMIN)
-                            .createdAt(Instant.now())
-                            .build());
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Admin")
+                .lastName("Group")
+                .email("group-admin-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.ADMIN)
+                .createdAt(Instant.now())
+                .build());
     adminHeaders = new HttpHeaders();
     adminHeaders.setBearerAuth(jwtService.generateToken(admin.getId(), admin.getRole()));
 
     var student =
-            appUserRepository.save(
-                    JAppUser.builder()
-                            .firstName("Student")
-                            .lastName("Group")
-                            .email("group-student-" + UUID.randomUUID() + "@example.com")
-                            .password("hashed")
-                            .role(UserRole.STUDENT)
-                            .createdAt(Instant.now())
-                            .build());
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Student")
+                .lastName("Group")
+                .email("group-student-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.STUDENT)
+                .createdAt(Instant.now())
+                .build());
     studentHeaders = new HttpHeaders();
     studentHeaders.setBearerAuth(jwtService.generateToken(student.getId(), student.getRole()));
 
     var teacher =
-            appUserRepository.save(
-                    JAppUser.builder()
-                            .firstName("Teacher")
-                            .lastName("Group")
-                            .email("group-teacher-" + UUID.randomUUID() + "@example.com")
-                            .password("hashed")
-                            .role(UserRole.TEACHER)
-                            .createdAt(Instant.now())
-                            .build());
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Teacher")
+                .lastName("Group")
+                .email("group-teacher-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.TEACHER)
+                .createdAt(Instant.now())
+                .build());
     teacherHeaders = new HttpHeaders();
     teacherHeaders.setBearerAuth(jwtService.generateToken(teacher.getId(), teacher.getRole()));
   }
@@ -96,35 +96,35 @@ class GroupControllerIT extends FacadeIT {
   @Test
   void listing_groups_as_student_should_return_403() {
     var response =
-            restTemplate.exchange(
-                    "/groups", HttpMethod.GET, new HttpEntity<>(studentHeaders), Object.class);
+        restTemplate.exchange(
+            "/groups", HttpMethod.GET, new HttpEntity<>(studentHeaders), Object.class);
     assertEquals(403, response.getStatusCode().value());
   }
 
   @Test
   void listing_groups_as_teacher_should_return_200() {
     var response =
-            restTemplate.exchange(
-                    "/groups", HttpMethod.GET, new HttpEntity<>(teacherHeaders), GroupResponse[].class);
+        restTemplate.exchange(
+            "/groups", HttpMethod.GET, new HttpEntity<>(teacherHeaders), GroupResponse[].class);
     assertEquals(200, response.getStatusCode().value());
   }
 
   @Test
   void listing_groups_as_admin_should_return_200() {
     var response =
-            restTemplate.exchange(
-                    "/groups", HttpMethod.GET, new HttpEntity<>(adminHeaders), GroupResponse[].class);
+        restTemplate.exchange(
+            "/groups", HttpMethod.GET, new HttpEntity<>(adminHeaders), GroupResponse[].class);
     assertEquals(200, response.getStatusCode().value());
   }
 
   @Test
   void creating_a_group_as_admin_should_return_201() {
     var response =
-            restTemplate.exchange(
-                    "/groups",
-                    HttpMethod.POST,
-                    new HttpEntity<>(new GroupRequest("K1", Track.EL), adminHeaders),
-                    GroupResponse.class);
+        restTemplate.exchange(
+            "/groups",
+            HttpMethod.POST,
+            new HttpEntity<>(new GroupRequest("K1", Track.EL), adminHeaders),
+            GroupResponse.class);
 
     assertEquals(201, response.getStatusCode().value());
     assertEquals(Track.EL, response.getBody().track());
@@ -133,11 +133,11 @@ class GroupControllerIT extends FacadeIT {
   @Test
   void creating_a_group_as_student_should_return_403() {
     var response =
-            restTemplate.exchange(
-                    "/groups",
-                    HttpMethod.POST,
-                    new HttpEntity<>(new GroupRequest("K9", Track.TN), studentHeaders),
-                    Object.class);
+        restTemplate.exchange(
+            "/groups",
+            HttpMethod.POST,
+            new HttpEntity<>(new GroupRequest("K9", Track.TN), studentHeaders),
+            Object.class);
 
     assertEquals(403, response.getStatusCode().value());
   }
@@ -145,18 +145,18 @@ class GroupControllerIT extends FacadeIT {
   @Test
   void deleting_an_unreferenced_group_as_admin_should_return_204() {
     var created =
-            restTemplate.exchange(
-                    "/groups",
-                    HttpMethod.POST,
-                    new HttpEntity<>(new GroupRequest("K2", Track.TN), adminHeaders),
-                    GroupResponse.class);
+        restTemplate.exchange(
+            "/groups",
+            HttpMethod.POST,
+            new HttpEntity<>(new GroupRequest("K2", Track.TN), adminHeaders),
+            GroupResponse.class);
 
     var response =
-            restTemplate.exchange(
-                    "/groups/" + created.getBody().id(),
-                    HttpMethod.DELETE,
-                    new HttpEntity<>(adminHeaders),
-                    Void.class);
+        restTemplate.exchange(
+            "/groups/" + created.getBody().id(),
+            HttpMethod.DELETE,
+            new HttpEntity<>(adminHeaders),
+            Void.class);
 
     assertEquals(204, response.getStatusCode().value());
   }
@@ -164,18 +164,18 @@ class GroupControllerIT extends FacadeIT {
   @Test
   void deleting_a_group_as_student_should_return_403() {
     var created =
-            restTemplate.exchange(
-                    "/groups",
-                    HttpMethod.POST,
-                    new HttpEntity<>(new GroupRequest("K3", Track.TN), adminHeaders),
-                    GroupResponse.class);
+        restTemplate.exchange(
+            "/groups",
+            HttpMethod.POST,
+            new HttpEntity<>(new GroupRequest("K3", Track.TN), adminHeaders),
+            GroupResponse.class);
 
     var response =
-            restTemplate.exchange(
-                    "/groups/" + created.getBody().id(),
-                    HttpMethod.DELETE,
-                    new HttpEntity<>(studentHeaders),
-                    Object.class);
+        restTemplate.exchange(
+            "/groups/" + created.getBody().id(),
+            HttpMethod.DELETE,
+            new HttpEntity<>(studentHeaders),
+            Object.class);
 
     assertEquals(403, response.getStatusCode().value());
   }
@@ -183,11 +183,11 @@ class GroupControllerIT extends FacadeIT {
   @Test
   void getting_an_unknown_group_as_admin_should_return_404() {
     var response =
-            restTemplate.exchange(
-                    "/groups/" + UUID.randomUUID(),
-                    HttpMethod.GET,
-                    new HttpEntity<>(adminHeaders),
-                    Object.class);
+        restTemplate.exchange(
+            "/groups/" + UUID.randomUUID(),
+            HttpMethod.GET,
+            new HttpEntity<>(adminHeaders),
+            Object.class);
     assertEquals(404, response.getStatusCode().value());
   }
 }
