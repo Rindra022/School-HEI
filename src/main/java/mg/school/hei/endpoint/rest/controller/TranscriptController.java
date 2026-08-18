@@ -28,8 +28,9 @@ public class TranscriptController {
 
   @PostMapping("/students/{id}/transcript/pdf")
   @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.userId()")
-  public ResponseEntity<Void> requestTranscriptPdf(@PathVariable UUID id) {
-    transcriptService.requestTranscriptPdf(id);
+  public ResponseEntity<Void> requestTranscriptPdf(
+      @PathVariable UUID id, @RequestParam(required = false) Integer academicYear) {
+    transcriptService.requestTranscriptPdf(id, academicYear);
     return ResponseEntity.accepted().build();
   }
 }

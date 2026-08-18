@@ -183,7 +183,7 @@ class TranscriptServiceTest {
             .build();
     when(appUserRepository.findById(studentId)).thenReturn(Optional.of(user));
 
-    service.requestTranscriptPdf(studentId);
+    service.requestTranscriptPdf(studentId, null);
 
     var captor = org.mockito.ArgumentCaptor.forClass(java.util.List.class);
     verify(eventProducer).accept(captor.capture());
@@ -198,7 +198,7 @@ class TranscriptServiceTest {
     var studentId = UUID.randomUUID();
     when(appUserRepository.findById(studentId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.requestTranscriptPdf(studentId))
+    assertThatThrownBy(() -> service.requestTranscriptPdf(studentId, null))
         .isInstanceOf(java.util.NoSuchElementException.class);
     verify(eventProducer, never()).accept(any());
   }
