@@ -11,10 +11,13 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
+import mg.school.hei.endpoint.event.EventProducer;
+import mg.school.hei.endpoint.event.model.TranscriptPdfRequested;
 import mg.school.hei.endpoint.rest.controller.dto.FullTranscriptResponse;
 import mg.school.hei.endpoint.rest.controller.dto.TranscriptCourseLine;
 import mg.school.hei.endpoint.rest.controller.dto.TranscriptResponse;
 import mg.school.hei.repository.*;
+import mg.school.hei.repository.AppUserRepository;
 import mg.school.hei.repository.model.JCourseAssignment;
 import mg.school.hei.repository.model.JExam;
 import mg.school.hei.repository.model.JGroupMembership;
@@ -29,6 +32,8 @@ public class TranscriptService {
   private final CourseAssignmentRepository courseAssignmentRepository;
   private final ExamRepository examRepository;
   private final GradeRepository gradeRepository;
+  private final AppUserRepository appUserRepository;
+  private final EventProducer<TranscriptPdfRequested> eventProducer;
 
   public TranscriptResponse getTranscript(UUID studentId, int academicYear) {
     JStudent student =
@@ -96,6 +101,21 @@ public class TranscriptService {
                     && (m.getEndDate() == null || !m.getEndDate().isBefore(yearStart)))
         .map(m -> m.getGroup().getId())
         .collect(Collectors.toSet());
+  }
+
+  public void requestTranscriptPdf(UUID studentId) {
+    var user =
+        appUserRepository
+            .findById(studentId)
+            .orElseThrow(() -> new NoSuchElementException("Student not found"));
+
+    var event =
+        TranscriptPdfRequested.builder()
+            .studentId(studentId.toString())
+            .recipientEmail(user.getEmail())
+            .build();
+
+    eventProducer.accept(List.of(event));
   }
 
   private List<Integer> yearsCoveredBy(JGroupMembership m) {

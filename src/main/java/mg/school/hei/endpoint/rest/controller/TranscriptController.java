@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import mg.school.hei.endpoint.rest.controller.dto.FullTranscriptResponse;
 import mg.school.hei.endpoint.rest.controller.dto.TranscriptResponse;
 import mg.school.hei.service.TranscriptService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,5 +24,12 @@ public class TranscriptController {
   @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.userId()")
   public FullTranscriptResponse getFullTranscript(@PathVariable UUID id) {
     return transcriptService.getFullTranscript(id);
+  }
+
+  @PostMapping("/students/{id}/transcript/pdf")
+  @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.userId()")
+  public ResponseEntity<Void> requestTranscriptPdf(@PathVariable UUID id) {
+    transcriptService.requestTranscriptPdf(id);
+    return ResponseEntity.accepted().build();
   }
 }
