@@ -8,6 +8,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import mg.school.hei.endpoint.event.EventProducer;
+import mg.school.hei.endpoint.event.model.TranscriptPdfRequested;
 import mg.school.hei.repository.*;
 import mg.school.hei.repository.model.*;
 import org.junit.jupiter.api.Test;
@@ -21,14 +23,17 @@ class TranscriptServiceTest {
       mock(CourseAssignmentRepository.class);
   private final ExamRepository examRepository = mock(ExamRepository.class);
   private final GradeRepository gradeRepository = mock(GradeRepository.class);
-
+  private final AppUserRepository appUserRepository = mock(AppUserRepository.class);
+  private final EventProducer<TranscriptPdfRequested> eventProducer = mock(EventProducer.class);
   private final TranscriptService service =
       new TranscriptService(
           studentRepository,
           groupMembershipRepository,
           courseAssignmentRepository,
           examRepository,
-          gradeRepository);
+          gradeRepository,
+          appUserRepository,
+          eventProducer);
 
   @Test
   void course_should_be_marked_incomplete_when_a_grade_is_missing() {
@@ -166,5 +171,35 @@ class TranscriptServiceTest {
     assertThat(response.years())
         .extracting(mg.school.hei.endpoint.rest.controller.dto.TranscriptResponse::academicYear)
         .containsExactly(2024, 2025);
+  }
+
+  @Test
+  void requestTranscriptPdf_should_publish_event_with_student_email() {
+    var studentId = UUID.randomUUID();
+    var user =
+        mg.school.hei.repository.model.JAppUser.builder()
+            .id(studentId)
+            .email("alice@hei.school")
+            .build();
+    when(appUserRepository.findById(studentId)).thenReturn(Optional.of(user));
+
+    service.requestTranscriptPdf(studentId);
+
+    var captor = org.mockito.ArgumentCaptor.forClass(java.util.List.class);
+    verify(eventProducer).accept(captor.capture());
+    var events = (java.util.List<TranscriptPdfRequested>) captor.getValue();
+    assertThat(events).hasSize(1);
+    assertThat(events.get(0).getStudentId()).isEqualTo(studentId.toString());
+    assertThat(events.get(0).getRecipientEmail()).isEqualTo("alice@hei.school");
+  }
+
+  @Test
+  void requestTranscriptPdf_should_reject_an_unknown_student() {
+    var studentId = UUID.randomUUID();
+    when(appUserRepository.findById(studentId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.requestTranscriptPdf(studentId))
+        .isInstanceOf(java.util.NoSuchElementException.class);
+    verify(eventProducer, never()).accept(any());
   }
 }
