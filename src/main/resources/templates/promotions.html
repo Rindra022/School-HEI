@@ -79,23 +79,25 @@
             alert("Veuillez vous connecter en tant qu'ADMIN avant de télécharger.");
             return;
         }
+
         try {
             const response = await fetch('/promotions/' + promotionId + '/graduates/export', {
-                headers: { 'Authorization': 'Bearer ' + authToken }
+                headers: {
+                    'Authorization': 'Bearer ' + authToken,
+                    'Accept': 'application/json'
+                }
             });
+
             if (!response.ok) {
                 alert("Erreur lors du téléchargement.");
                 return;
             }
+
             const data = await response.json();
             window.location.href = data.url;
         } catch (e) {
             alert("Erreur lors du téléchargement.");
         }
-        const response = await fetch('/promotions/' + promotionId + '/graduates/export', {
-            headers: { 'Authorization': 'Bearer ' + authToken }
-        });
-        window.location.href = response.url;
     }
 
     document.querySelectorAll('.download-btn').forEach(function(btn) {

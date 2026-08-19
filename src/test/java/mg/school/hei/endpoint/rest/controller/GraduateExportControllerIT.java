@@ -221,19 +221,15 @@ class GraduateExportControllerIT extends FacadeIT {
   }
 
   @Test
-  void export_as_admin_should_return_200_with_a_downloadable_xlsx_containing_the_graduate()
+  void export_as_admin_should_return_302_with_a_downloadable_xlsx_containing_the_graduate()
       throws Exception {
     var response = exportRaw(adminHeaders);
 
-    assertEquals(200, response.getStatusCode().value());
-    assertNotNull(response.getBody());
-
-    @SuppressWarnings("unchecked")
-    var body = (Map<String, String>) response.getBody();
-    var location = body.get("url");
+    assertEquals(302, response.getStatusCode().value());
+    var location = response.getHeaders().getLocation();
     assertNotNull(location);
 
-    String bucketKey = URI.create(location).getPath().substring(1);
+    String bucketKey = URI.create(location.toString()).getPath().substring(1);
     var downloaded = bucketComponent.download(bucketKey);
 
     try (XSSFWorkbook workbook = new XSSFWorkbook(downloaded)) {
@@ -253,6 +249,24 @@ class GraduateExportControllerIT extends FacadeIT {
       assertNotNull(tnSheet);
       assertEquals(0, tnSheet.getLastRowNum());
     }
+  }
+
+  @Test
+  void export_as_admin_with_json_accept_header_should_return_200_with_the_signed_url() {
+    var headers = new HttpHeaders();
+    headers.addAll(adminHeaders);
+    headers.setAccept(java.util.List.of(org.springframework.http.MediaType.APPLICATION_JSON));
+
+    var response =
+        restTemplate.exchange(
+            "/promotions/" + promotionId + "/graduates/export",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            Map.class);
+
+    assertEquals(200, response.getStatusCode().value());
+    assertNotNull(response.getBody().get("url"));
+    assertTrue(response.getBody().get("url").toString().contains("graduates/" + promotionId));
   }
 
   @Test
@@ -292,9 +306,13 @@ class GraduateExportControllerIT extends FacadeIT {
     return template;
   }
 
-  private ResponseEntity<Map> exportRaw(HttpHeaders headers) {
+  private ResponseEntity<Void> exportRaw(HttpHeaders headers) {
     var noRedirectTemplate = createNoRedirectRestTemplate();
     String url = restTemplate.getRootUri() + "/promotions/" + promotionId + "/graduates/export";
-    return noRedirectTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+    var requestHeaders = new HttpHeaders();
+    requestHeaders.putAll(headers);
+    requestHeaders.setAccept(java.util.List.of(org.springframework.http.MediaType.TEXT_HTML));
+    return noRedirectTemplate.exchange(
+        url, HttpMethod.GET, new HttpEntity<>(requestHeaders), Void.class);
   }
 }
