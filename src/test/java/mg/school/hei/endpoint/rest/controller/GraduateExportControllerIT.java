@@ -252,6 +252,24 @@ class GraduateExportControllerIT extends FacadeIT {
   }
 
   @Test
+  void export_as_admin_with_json_accept_header_should_return_200_with_the_signed_url() {
+    var headers = new HttpHeaders();
+    headers.addAll(adminHeaders);
+    headers.setAccept(java.util.List.of(org.springframework.http.MediaType.APPLICATION_JSON));
+
+    var response =
+        restTemplate.exchange(
+            "/promotions/" + promotionId + "/graduates/export",
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            Map.class);
+
+    assertEquals(200, response.getStatusCode().value());
+    assertNotNull(response.getBody().get("url"));
+    assertTrue(response.getBody().get("url").toString().contains("graduates/" + promotionId));
+  }
+
+  @Test
   void export_as_student_should_return_403() {
     var response = exportRaw(studentHeaders);
     assertEquals(403, response.getStatusCode().value());
@@ -291,6 +309,10 @@ class GraduateExportControllerIT extends FacadeIT {
   private ResponseEntity<Void> exportRaw(HttpHeaders headers) {
     var noRedirectTemplate = createNoRedirectRestTemplate();
     String url = restTemplate.getRootUri() + "/promotions/" + promotionId + "/graduates/export";
-    return noRedirectTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Void.class);
+    var requestHeaders = new HttpHeaders();
+    requestHeaders.putAll(headers);
+    requestHeaders.setAccept(java.util.List.of(org.springframework.http.MediaType.TEXT_HTML));
+    return noRedirectTemplate.exchange(
+        url, HttpMethod.GET, new HttpEntity<>(requestHeaders), Void.class);
   }
 }
