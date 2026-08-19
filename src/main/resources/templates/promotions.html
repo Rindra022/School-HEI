@@ -74,13 +74,15 @@
         }
     }
 
-    function downloadGraduates(promotionId) {
+    async function downloadGraduates(promotionId) {
         if (!authToken) {
             alert("Veuillez vous connecter en tant qu'ADMIN avant de télécharger.");
             return;
         }
-        window.location.href =
-            '/promotions/' + promotionId + '/graduates/export?access_token=' + encodeURIComponent(authToken);
+        const response = await fetch('/promotions/' + promotionId + '/graduates/export', {
+            headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        window.location.href = response.url;
     }
 
     document.querySelectorAll('.download-btn').forEach(function(btn) {
