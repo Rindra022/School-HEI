@@ -221,15 +221,19 @@ class GraduateExportControllerIT extends FacadeIT {
   }
 
   @Test
-  void export_as_admin_should_return_302_with_a_downloadable_xlsx_containing_the_graduate()
+  void export_as_admin_should_return_200_with_a_downloadable_xlsx_containing_the_graduate()
       throws Exception {
     var response = exportRaw(adminHeaders);
 
-    assertEquals(302, response.getStatusCode().value());
-    var location = response.getHeaders().getLocation();
+    assertEquals(200, response.getStatusCode().value());
+    assertNotNull(response.getBody());
+
+    @SuppressWarnings("unchecked")
+    var body = (Map<String, String>) response.getBody();
+    var location = body.get("url");
     assertNotNull(location);
 
-    String bucketKey = URI.create(location.toString()).getPath().substring(1);
+    String bucketKey = URI.create(location).getPath().substring(1);
     var downloaded = bucketComponent.download(bucketKey);
 
     try (XSSFWorkbook workbook = new XSSFWorkbook(downloaded)) {
@@ -288,9 +292,9 @@ class GraduateExportControllerIT extends FacadeIT {
     return template;
   }
 
-  private ResponseEntity<Void> exportRaw(HttpHeaders headers) {
+  private ResponseEntity<Map> exportRaw(HttpHeaders headers) {
     var noRedirectTemplate = createNoRedirectRestTemplate();
     String url = restTemplate.getRootUri() + "/promotions/" + promotionId + "/graduates/export";
-    return noRedirectTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Void.class);
+    return noRedirectTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
   }
 }
