@@ -92,6 +92,10 @@
         } catch (e) {
             alert("Erreur lors du téléchargement.");
         }
+        const response = await fetch('/promotions/' + promotionId + '/graduates/export', {
+            headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        window.location.href = response.url;
     }
 
     document.querySelectorAll('.download-btn').forEach(function(btn) {
