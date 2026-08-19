@@ -49,6 +49,8 @@ public class SecurityConf {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/courses/*")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/promotions-view")
+                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(bearerAuthFilter, UsernamePasswordAuthenticationFilter.class)
