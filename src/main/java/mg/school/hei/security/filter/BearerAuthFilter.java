@@ -21,19 +21,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 @RequiredArgsConstructor
 public class BearerAuthFilter extends OncePerRequestFilter {
-  private static final String ACCESS_TOKEN_QUERY_PARAM = "access_token";
-
   private final JwtService jwtService;
 
   @Override
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
-    String token = resolveToken(request);
+    String header = request.getHeader("Authorization");
 
-    if (token != null) {
+    if (header != null && header.startsWith("Bearer ")) {
       try {
-        var claims = jwtService.parseToken(token);
+        var claims = jwtService.parseToken(header.substring(7));
         UUID userId = UUID.fromString(claims.getSubject());
         UserRole role = UserRole.valueOf(claims.get("role", String.class));
         Principal principal = Principal.builder().userId(userId).role(role).build();
@@ -48,14 +46,5 @@ public class BearerAuthFilter extends OncePerRequestFilter {
     }
 
     chain.doFilter(request, response);
-  }
-
-  private String resolveToken(HttpServletRequest request) {
-    String header = request.getHeader("Authorization");
-    if (header != null && header.startsWith("Bearer ")) {
-      return header.substring(7);
-    }
-    String queryToken = request.getParameter(ACCESS_TOKEN_QUERY_PARAM);
-    return (queryToken != null && !queryToken.isBlank()) ? queryToken : null;
   }
 }
