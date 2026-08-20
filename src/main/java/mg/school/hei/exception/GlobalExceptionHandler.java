@@ -3,9 +3,11 @@ package mg.school.hei.exception;
 import java.time.Instant;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -15,6 +17,15 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<Object> handleBadRequest(IllegalArgumentException e) {
     return build(HttpStatus.BAD_REQUEST, e.getMessage());
+  }
+
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<Object> handleValidationError(MethodArgumentNotValidException e) {
+    String message =
+        e.getBindingResult().getFieldErrors().stream()
+            .map(err -> err.getField() + ": " + err.getDefaultMessage())
+            .collect(Collectors.joining("; "));
+    return build(HttpStatus.BAD_REQUEST, message);
   }
 
   @ExceptionHandler(NoSuchElementException.class)
@@ -30,7 +41,10 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<Object> handleDataIntegrityViolation(DataIntegrityViolationException e) {
     return build(
-        HttpStatus.CONFLICT, "This operation violates a uniqueness or referential constraint");
+        HttpStatus.CONFLICT,
+        "This action could not be completed because it conflicts with existing data (for "
+            + "example, a duplicate entry or an invalid value). Please check your input and try"
+            + " again.");
   }
 
   private ResponseEntity<Object> build(HttpStatus status, String message) {
