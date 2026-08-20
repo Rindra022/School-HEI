@@ -2,47 +2,189 @@
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HEI - Diplômés par promotion</title>
     <style>
-        body { font-family: sans-serif; margin: 2rem; }
-        table { border-collapse: collapse; width: 100%; max-width: 600px; }
-        th, td { border: 1px solid #ccc; padding: 0.5rem 1rem; text-align: left; }
-        #login-box { margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #ccc; max-width: 320px; }
-        #login-box input { display: block; margin-bottom: 0.5rem; width: 100%; box-sizing: border-box; }
-        #status { margin-top: 0.5rem; font-weight: bold; }
-        button { cursor: pointer; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            min-height: 100vh;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #fff;
+            padding: 2rem 2rem 1.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            color: #a8b2d1;
+            margin-top: 0.3rem;
+            font-size: 0.95rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #1a1a2e;
+        }
+
+        .login-fields {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .login-fields input {
+            flex: 1;
+            padding: 0.65rem 0.9rem;
+            border: 1.5px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        .login-fields input:focus {
+            border-color: #0f3460;
+            box-shadow: 0 0 0 3px rgba(15,52,96,0.1);
+        }
+
+        .btn {
+            padding: 0.65rem 1.2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .btn:active { transform: scale(0.97); }
+
+        .btn-primary {
+            background: #0f3460;
+            color: #fff;
+        }
+
+        .btn-primary:hover { background: #1a4a7a; }
+
+        .btn-download {
+            background: #e8f5e9;
+            color: #2e7d32;
+            font-size: 0.82rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .btn-download:hover { background: #c8e6c9; }
+
+        .status {
+            margin-top: 0.5rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .status.connected { color: #2e7d32; }
+        .status.error { color: #c62828; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #6b7280;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        tbody td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 0.95rem;
+        }
+
+        tbody tr:hover { background: #f9fafb; }
+
+        tbody tr:last-child td { border-bottom: none; }
+
+        @media (max-width: 600px) {
+            .login-fields { flex-direction: column; }
+            header { padding: 1.5rem 1rem; }
+            .container { padding: 0 1rem; }
+        }
     </style>
 </head>
 <body>
 
-<h1>Promotions HEI</h1>
+<header>
+    <h1>Promotions HEI</h1>
+    <p>Gestion des diplômés par promotion</p>
+</header>
 
-<div id="login-box">
-    <h2>Connexion ADMIN</h2>
-    <input type="email" id="email" placeholder="Email"/>
-    <input type="password" id="password" placeholder="Mot de passe"/>
-    <button type="button" onclick="login()">Se connecter</button>
-    <div id="status">Non connecté</div>
+<div class="container">
+    <div class="card">
+        <h2>Connexion ADMIN</h2>
+        <div class="login-fields">
+            <input type="email" id="email" placeholder="Email"/>
+            <input type="password" id="password" placeholder="Mot de passe"/>
+            <button class="btn btn-primary" type="button" onclick="login()">Se connecter</button>
+        </div>
+        <div id="status" class="status">Non connecté</div>
+    </div>
+
+    <div class="card">
+        <h2>Promotions</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>Année</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="promotion : ${promotions}">
+                <td th:text="${promotion.year}">2024</td>
+                <td>
+                    <button type="button" class="btn btn-download download-btn" th:attr="data-id=${promotion.id}">
+                        Télécharger la liste des diplômés
+                    </button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
-
-<table>
-    <thead>
-    <tr>
-        <th>Année</th>
-        <th>Action</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="promotion : ${promotions}">
-        <td th:text="${promotion.year}">2024</td>
-        <td>
-            <button type="button" class="download-btn" th:attr="data-id=${promotion.id}">
-                Télécharger la liste des diplômés
-            </button>
-        </td>
-    </tr>
-    </tbody>
-</table>
 
 <script>
     let authToken = null;
@@ -61,6 +203,7 @@
 
             if (!response.ok) {
                 statusEl.textContent = 'Échec de la connexion';
+                statusEl.className = 'status error';
                 authToken = null;
                 return;
             }
@@ -68,8 +211,10 @@
             const data = await response.json();
             authToken = data.token;
             statusEl.textContent = 'Connecté';
+            statusEl.className = 'status connected';
         } catch (e) {
             statusEl.textContent = 'Erreur de connexion';
+            statusEl.className = 'status error';
             authToken = null;
         }
     }
