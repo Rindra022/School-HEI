@@ -102,4 +102,28 @@ class GroupMembershipServiceTest {
     assertThatThrownBy(() -> service.create(request))
         .isInstanceOf(java.util.NoSuchElementException.class);
   }
+
+  @Test
+  void create_should_reject_reassigning_to_the_same_group_already_active() {
+    var studentId = UUID.randomUUID();
+    var groupId = UUID.randomUUID();
+    var student = JStudent.builder().id(studentId).build();
+    var group = JAppGroup.builder().id(groupId).build();
+    var active =
+        JGroupMembership.builder()
+            .group(group)
+            .startDate(LocalDate.of(2024, 9, 1))
+            .endDate(null)
+            .build();
+    when(studentRepository.findById(studentId)).thenReturn(Optional.of(student));
+    when(appGroupRepository.findById(groupId)).thenReturn(Optional.of(group));
+    when(groupMembershipRepository.findByStudentIdOrderByStartDateAsc(studentId))
+        .thenReturn(List.of(active));
+
+    var request = new GroupMembershipRequest(studentId, groupId, LocalDate.of(2024, 11, 15));
+
+    assertThatThrownBy(() -> service.create(request))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("already assigned to this group");
+  }
 }
