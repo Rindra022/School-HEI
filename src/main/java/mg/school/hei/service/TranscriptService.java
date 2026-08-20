@@ -140,6 +140,7 @@ public class TranscriptService {
         complete = false;
       }
     }
+    complete = complete && coveredCoefficient.compareTo(BigDecimal.ONE) == 0;
 
     Double average =
         coveredCoefficient.compareTo(BigDecimal.ZERO) > 0

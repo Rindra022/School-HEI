@@ -252,7 +252,7 @@ components:
         courses: { type: array, items: { $ref: '#/components/schemas/TranscriptCourseLine' } }
         generalAverage: { type: number, format: double, nullable: true }
         totalCredits: { type: integer }
-        complete: { type: boolean, description: "false if provisional (at least one course incomplete)" }
+        complete: { type: boolean, description: "false if provisional (at least one exam ungraded, or exam coefficients do not sum to 1)" }
     FullTranscriptResponse:
       type: object
       properties:

@@ -91,6 +91,7 @@ public class GradeService {
         gradeRepository
             .findById(id)
             .orElseThrow(() -> new NoSuchElementException("Grade not found"));
+    checkCanAccessGrade(entity);
     return toResponse(gradeMapper.toModel(entity));
   }
 
@@ -99,6 +100,7 @@ public class GradeService {
         gradeRepository
             .findById(id)
             .orElseThrow(() -> new NoSuchElementException("Grade not found"));
+    checkCanAccessGrade(entity);
 
     JGrade current =
         gradeRepository
@@ -113,6 +115,19 @@ public class GradeService {
       cursor = cursor.getPreviousGrade();
     }
     return chain;
+  }
+
+  private void checkCanAccessGrade(JGrade entity) {
+    Principal principal =
+        (Principal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    if (principal.role() == UserRole.STUDENT
+        && !entity.getStudent().getId().equals(principal.userId())) {
+      throw new AccessDeniedException("You can only view your own grades");
+    }
+    if (principal.role() == UserRole.TEACHER
+        && !entity.getExam().getAssignment().getTeacher().getId().equals(principal.userId())) {
+      throw new AccessDeniedException("You can only view grades for your own courses");
+    }
   }
 
   private GradeResponse toResponse(Grade g) {
@@ -132,6 +147,16 @@ public class GradeService {
         (Principal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     if (principal.role() == UserRole.STUDENT) {
       studentId = principal.userId();
+    }
+
+    if (principal.role() == UserRole.TEACHER && examId != null) {
+      JExam exam =
+          examRepository
+              .findById(examId)
+              .orElseThrow(() -> new NoSuchElementException("Exam not found"));
+      if (!exam.getAssignment().getTeacher().getId().equals(principal.userId())) {
+        throw new AccessDeniedException("You can only view grades for your own courses");
+      }
     }
     if (studentId != null && examId != null) {
       return gradeRepository
