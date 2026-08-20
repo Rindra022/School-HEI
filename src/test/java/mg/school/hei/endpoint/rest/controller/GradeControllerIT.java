@@ -196,6 +196,105 @@ class GradeControllerIT extends FacadeIT {
     assertEquals(404, response.getStatusCode().value());
   }
 
+  @Test
+  void student_getting_another_students_grade_should_return_403() {
+    var gradeId = recordGrade(new BigDecimal("12.00"), null);
+    var otherStudentHeaders = createStudentHeaders();
+
+    var response =
+        restTemplate.exchange(
+            "/grades/" + gradeId,
+            HttpMethod.GET,
+            new HttpEntity<>(otherStudentHeaders),
+            Object.class);
+
+    assertEquals(403, response.getStatusCode().value());
+  }
+
+  @Test
+  void student_getting_own_grade_should_return_200() {
+    var gradeId = recordGrade(new BigDecimal("12.00"), null);
+
+    var response =
+        restTemplate.exchange(
+            "/grades/" + gradeId,
+            HttpMethod.GET,
+            new HttpEntity<>(authHeaders),
+            GradeResponse.class);
+
+    assertEquals(200, response.getStatusCode().value());
+  }
+
+  @Test
+  void student_getting_another_students_grade_history_should_return_403() {
+    var gradeId = recordGrade(new BigDecimal("12.00"), null);
+    var otherStudentHeaders = createStudentHeaders();
+
+    var response =
+        restTemplate.exchange(
+            "/grades/" + gradeId + "/history",
+            HttpMethod.GET,
+            new HttpEntity<>(otherStudentHeaders),
+            Object.class);
+
+    assertEquals(403, response.getStatusCode().value());
+  }
+
+  @Test
+  void teacher_listing_grades_for_another_teachers_exam_should_return_403() {
+    recordGrade(new BigDecimal("12.00"), null);
+    var otherTeacherHeaders = createTeacherHeaders();
+
+    var response =
+        restTemplate.exchange(
+            "/grades?examId=" + examId,
+            HttpMethod.GET,
+            new HttpEntity<>(otherTeacherHeaders),
+            Object.class);
+
+    assertEquals(403, response.getStatusCode().value());
+  }
+
+  private HttpHeaders createStudentHeaders() {
+    var otherStudent =
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Other")
+                .lastName("Student")
+                .email("grade-other-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.STUDENT)
+                .createdAt(Instant.now())
+                .build());
+    studentRepository.save(
+        JStudent.builder()
+            .id(otherStudent.getId())
+            .std("STD24051")
+            .promotion(promotionRepository.findAll().get(0))
+            .build());
+
+    var headers = new HttpHeaders();
+    headers.setBearerAuth(jwtService.generateToken(otherStudent.getId(), UserRole.STUDENT));
+    return headers;
+  }
+
+  private HttpHeaders createTeacherHeaders() {
+    var otherTeacher =
+        appUserRepository.save(
+            JAppUser.builder()
+                .firstName("Other")
+                .lastName("Teacher")
+                .email("grade-teacher-other-" + UUID.randomUUID() + "@example.com")
+                .password("hashed")
+                .role(UserRole.TEACHER)
+                .createdAt(Instant.now())
+                .build());
+
+    var headers = new HttpHeaders();
+    headers.setBearerAuth(jwtService.generateToken(otherTeacher.getId(), UserRole.TEACHER));
+    return headers;
+  }
+
   private UUID recordGrade(BigDecimal value, String reason) {
     var request = new GradeRequest(studentId, examId, value, reason);
     var response =
